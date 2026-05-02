@@ -8,10 +8,11 @@ class MI_Renderer
 {
     public static function head_meta()
     {
-        if (! is_singular(MI_Post_Type::POST_TYPE)) {
-            return;
-        }
+        // if (! is_singular(MI_Post_Type::POST_TYPE)) {
+        //     return;
+        // }
         $post = get_queried_object();
+        var_dump( $post);
         if (! $post || empty($post->ID)) {
             return;
         }
@@ -162,7 +163,8 @@ class MI_Renderer
     }
 
     /**
-     * Private markdown articles are not shown to visitors without permission (404).
+     * Block front-end access unless the post is publicly viewable (e.g. publish) or the user may read it (private/draft/future for editors).
+     * Guests can view Public articles without logging in.
      */
     public static function template_redirect_private_article()
     {
@@ -170,7 +172,10 @@ class MI_Renderer
             return;
         }
         $post = get_queried_object();
-        if (! $post || $post->post_status !== 'private') {
+        if (! $post instanceof WP_Post) {
+            return;
+        }
+        if (is_post_publicly_viewable($post)) {
             return;
         }
         if (current_user_can('read_post', $post->ID)) {

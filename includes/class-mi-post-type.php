@@ -21,6 +21,8 @@ class MI_Post_Type
             [
                 'labels' => $labels,
                 'public' => true,
+                'publicly_queryable' => true,
+                'exclude_from_search' => false,
                 'show_ui' => true,
                 'show_in_menu' => false,
                 'supports' => ['title', 'editor', 'thumbnail', 'excerpt'],
