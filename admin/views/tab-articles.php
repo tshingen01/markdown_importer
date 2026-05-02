@@ -18,6 +18,7 @@ if (! defined('ABSPATH')) {
                 <th><?php esc_html_e('keyword', 'markdown-importer'); ?></th>
                 <th><?php esc_html_e('Url-slug', 'markdown-importer'); ?></th>
                 <th><?php esc_html_e('Visibility', 'markdown-importer'); ?></th>
+                <th><?php esc_html_e('Preview', 'markdown-importer'); ?></th>
                 <th><?php esc_html_e('Actions', 'markdown-importer'); ?></th>
             </tr>
         </thead>

@@ -229,6 +229,15 @@
                         esc('Private') +
                         '</label></td>' +
                         '<td>' +
+                        (a.permalink
+                            ? '<a href="' +
+                              esc(a.permalink) +
+                              '" class="mi-preview-link" target="_blank" rel="noopener noreferrer">' +
+                              esc(MIAdmin.previewLabel || 'Preview') +
+                              ' <span class="dashicons dashicons-external"></span></a>'
+                            : '') +
+                        '</td>' +
+                        '<td>' +
                         '<button type="button" class="button mi-a-edit" title="Edit"><span class="dashicons dashicons-edit"></span></button> ' +
                         '<button type="button" class="button mi-a-del" title="Delete"><span class="dashicons dashicons-trash"></span></button> ' +
                         '<a class="button" href="' +

@@ -290,6 +290,7 @@ class MI_Ajax
                 'id' => $pid,
                 'keyword' => (string) get_post_meta($pid, MI_Article_Service::META_KEYWORD, true),
                 'slug' => get_post_field('post_name', $pid),
+                'permalink' => get_permalink($pid),
                 'visibility' => get_post_status($pid) === 'private' ? 'private' : 'public',
                 'release_date' => MI_Staging::release_for_form((string) get_post_meta($pid, MI_Article_Service::META_RELEASE, true)),
             ];

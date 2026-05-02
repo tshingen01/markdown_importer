@@ -31,6 +31,7 @@ class MI_Plugin
             },
             99
         );
+        add_action('template_redirect', [MI_Renderer::class, 'template_redirect_private_article'], 5);
         add_action('wp_head', [MI_Renderer::class, 'head_meta'], 1);
         add_filter('the_content', [MI_Renderer::class, 'filter_content'], 8);
 

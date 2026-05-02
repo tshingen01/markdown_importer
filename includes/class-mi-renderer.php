@@ -37,19 +37,16 @@ class MI_Renderer
         if (! is_string($md) || $md === '') {
             return $content;
         }
-        $keyword = (string) get_post_meta($post->ID, '_mi_keyword', true);
-        $html = self::markdown_to_html($md, $post->ID, $keyword);
+        $html = self::markdown_to_html($md, $post->ID);
         return $html;
     }
 
-    public static function markdown_to_html($markdown, $post_id, $keyword = '')
+    public static function markdown_to_html($markdown, $post_id)
     {
         $work = (string) $markdown;
-        if ($keyword !== '') {
-            $work = str_replace('[[' . $keyword . ']]', esc_html($keyword), $work);
-        }
-        $work = self::replace_image_tags($work, $post_id);
         $work = self::replace_cta_tags($work);
+        $work = self::replace_image_tags($work, $post_id);
+        $work = self::replace_article_keyword_links($work, (int) $post_id);
         if (! class_exists('Parsedown')) {
             return '<div class="mi-article"><pre>' . esc_html($work) . '</pre></div>';
         }
@@ -119,7 +116,7 @@ class MI_Renderer
     private static function replace_cta_tags($text)
     {
         return preg_replace_callback(
-            '/\[\[CTA::([^\]]+)\]\]/u',
+            '/\[\[CTA::([^\]]+)\]\]/iu',
             function ($m) {
                 $name = trim($m[1]);
                 $cta = MI_Cta::get_by_name($name);
@@ -130,5 +127,58 @@ class MI_Renderer
             },
             $text
         );
+    }
+
+    /**
+     * [[Keyword]] → link to the mi_article with that keyword (no "::" in token — use [[CTA::x]] / [[image::…]] first).
+     */
+    private static function replace_article_keyword_links($text, $current_post_id)
+    {
+        return preg_replace_callback(
+            '/\[\[([^:\[\]]+)\]\]/u',
+            function ($m) use ($current_post_id) {
+                $key = trim($m[1]);
+                if ($key === '') {
+                    return $m[0];
+                }
+                $pid = MI_Article_Service::find_post_id_by_keyword($key, 0);
+                if ($pid <= 0) {
+                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
+                }
+                $post = get_post($pid);
+                if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
+                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
+                }
+                if ($post->post_status === 'private' && ! current_user_can('read_post', $pid)) {
+                    return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
+                }
+                $url = get_permalink($pid);
+                $title = get_the_title($pid);
+                $label = $title !== '' ? $title : $key;
+                return '<a href="' . esc_url($url) . '" class="mi-article-link">' . esc_html($label) . '</a>';
+            },
+            $text
+        );
+    }
+
+    /**
+     * Private markdown articles are not shown to visitors without permission (404).
+     */
+    public static function template_redirect_private_article()
+    {
+        if (! is_singular(MI_Post_Type::POST_TYPE)) {
+            return;
+        }
+        $post = get_queried_object();
+        if (! $post || $post->post_status !== 'private') {
+            return;
+        }
+        if (current_user_can('read_post', $post->ID)) {
+            return;
+        }
+        global $wp_query;
+        $wp_query->set_404();
+        status_header(404);
+        nocache_headers();
     }
 }
