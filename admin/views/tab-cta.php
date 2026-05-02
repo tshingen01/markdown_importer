@@ -6,14 +6,15 @@ if (! defined('ABSPATH')) {
 <div id="mi-cta-root" class="mi-panel">
     <div class="mi-section-header"><?php esc_html_e('Edit/add CTA Buttons', 'markdown-importer'); ?></div>
     <div class="mi-cta-layout">
-        <div class="mi-cta-editor">
+        <div class="mi-cta-editor" id="mi-cta-editor">
+            <p class="description mi-cta-hint mi-hidden" id="mi-cta-hint"><?php esc_html_e('New CTA: choose a unique name (used as [[CTA::name]]), add HTML/CSS, then click Save.', 'markdown-importer'); ?></p>
             <label class="mi-label"><?php esc_html_e('Name', 'markdown-importer'); ?></label>
             <input type="text" class="widefat" id="mi-cta-name" placeholder="CTA_START" />
 
             <label class="mi-label"><?php esc_html_e('HTML / CSS', 'markdown-importer'); ?></label>
             <textarea class="widefat mi-code" rows="18" id="mi-cta-code"></textarea>
 
-            <p><button type="button" class="button button-primary" id="mi-cta-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button></p>
+            <p><button type="button" class="button button-primary" id="mi-cta-save"><?php esc_html_e('save', 'markdown-importer'); ?></button></p>
         </div>
         <div class="mi-cta-list-wrap">
             <div class="mi-toolbar">

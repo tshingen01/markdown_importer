@@ -62,6 +62,7 @@ class MI_Admin
                 'nonce' => wp_create_nonce(MI_Ajax::NONCE),
                 'upgradeTabUrl' => admin_url('admin.php?page=markdown-importer&tab=upgrade'),
                 'i18n' => [
+                    'ctaNameRequired' => __('Enter a CTA name before saving (e.g. CTA_START).', 'markdown-importer'),
                     'confirmImport' => __('Import articles now?', 'markdown-importer'),
                     'confirmUpgrade' => __('Update articles now?', 'markdown-importer'),
                     'confirmDelete' => __('Delete this article permanently?', 'markdown-importer'),

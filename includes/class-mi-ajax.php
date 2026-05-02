@@ -318,13 +318,17 @@ class MI_Ajax
             wp_send_json_error(['message' => __('Article not found.', 'markdown-importer')]);
         }
         $title = isset($_POST['title']) ? wp_unslash($_POST['title']) : '';
+        $keyword = isset($_POST['keyword']) ? wp_unslash($_POST['keyword']) : '';
         $slug = isset($_POST['slug']) ? wp_unslash($_POST['slug']) : '';
         $meta = isset($_POST['meta_description']) ? wp_unslash($_POST['meta_description']) : '';
         $md = isset($_POST['markdown']) ? wp_unslash($_POST['markdown']) : '';
         $release = isset($_POST['release_date']) ? wp_unslash($_POST['release_date']) : 'now';
         $vis = isset($_POST['visibility']) && $_POST['visibility'] === 'private' ? 'private' : 'public';
 
-        MI_Article_Service::save_article_from_request($id, $title, $slug, $meta, $md, $release, $vis);
+        $saved = MI_Article_Service::save_article_from_request($id, $title, $keyword, $slug, $meta, $md, $release, $vis);
+        if (is_wp_error($saved)) {
+            wp_send_json_error(['message' => $saved->get_error_message()]);
+        }
         wp_send_json_success(['article' => MI_Article_Service::get_article_payload($id)]);
     }
 
@@ -529,6 +533,7 @@ class MI_Ajax
         self::auth();
         $uid = get_current_user_id();
         $queue = self::read_upgrade_queue($uid);
+        $failed = [];
         foreach ($queue as $item) {
             if (! empty($item['error']) || empty($item['target_post_id'])) {
                 continue;
@@ -541,13 +546,24 @@ class MI_Ajax
                 'keyword' => $item['keyword'],
             ];
             $post_id = MI_Article_Service::update_article((int) $item['target_post_id'], $parsed, $item['release_date'], []);
-            if (! is_wp_error($post_id) && ! empty($item['files_dir']) && is_dir($item['files_dir'])) {
+            if (is_wp_error($post_id)) {
+                $failed[] = [
+                    'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                    'message' => $post_id->get_error_message(),
+                ];
+                continue;
+            }
+            if (! empty($item['files_dir']) && is_dir($item['files_dir'])) {
                 MI_Article_Service::import_images_for_post((int) $item['target_post_id'], $item['files_dir'], isset($item['markdown']) ? (string) $item['markdown'] : '');
             }
         }
         self::cleanup_staging_dirs($queue);
         self::clear_upgrade_queue_user($uid);
-        wp_send_json_success(['message' => __('Articles updated.', 'markdown-importer')]);
+        $msg = __('Articles updated.', 'markdown-importer');
+        if ($failed !== []) {
+            $msg = __('Some updates could not be saved (duplicate keyword or slug).', 'markdown-importer');
+        }
+        wp_send_json_success(['failed' => $failed, 'message' => $msg]);
     }
 
     public static function clear_upgrade_queue()

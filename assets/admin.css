@@ -178,6 +178,23 @@
 .mi-cta-editor {
     flex: 1;
     min-width: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 12px;
+    margin: -12px;
+}
+
+.mi-cta-editor.mi-cta-editor--new {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+.mi-cta-hint {
+    margin-top: 0;
+}
+
+.mi-cta-hint.mi-hidden {
+    display: none;
 }
 
 .mi-cta-list-wrap {

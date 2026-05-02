@@ -32,6 +32,9 @@ if (! defined('ABSPATH')) {
                 <label class="mi-label"><?php esc_html_e('Title', 'markdown-importer'); ?></label>
                 <input type="text" class="widefat" id="mi-e-title" />
 
+                <label class="mi-label"><?php esc_html_e('Keyword', 'markdown-importer'); ?></label>
+                <input type="text" class="widefat" id="mi-e-keyword" placeholder="<?php esc_attr_e('From filename; must be unique', 'markdown-importer'); ?>" />
+
                 <label class="mi-label"><?php esc_html_e('URL Slug', 'markdown-importer'); ?></label>
                 <input type="text" class="widefat" id="mi-e-slug" />
 

@@ -278,6 +278,7 @@
                 var a = res.data.article;
                 currentId = a.id;
                 $('#mi-e-title').val(a.title);
+                $('#mi-e-keyword').val(a.keyword || '');
                 $('#mi-e-slug').val(a.slug);
                 $('#mi-e-meta').val(a.meta_description);
                 $('#mi-e-md').val(a.markdown);
@@ -294,6 +295,7 @@
             ajax('mi_save_article', {
                 id: currentId,
                 title: $('#mi-e-title').val(),
+                keyword: $('#mi-e-keyword').val(),
                 slug: $('#mi-e-slug').val(),
                 meta_description: $('#mi-e-meta').val(),
                 markdown: $('#mi-e-md').val(),
@@ -303,6 +305,10 @@
                 if (res.success) {
                     alert(MIAdmin.i18n.saved);
                     loadList($('#mi-articles-search').val());
+                } else if (res.data && res.data.message) {
+                    alert(res.data.message);
+                } else {
+                    alert(MIAdmin.i18n.error);
                 }
             });
         });
@@ -347,12 +353,27 @@
 
         fetchCtas();
 
+        var $editor = $('#mi-cta-editor');
+        var $hint = $('#mi-cta-hint');
+
+        function setNewCtaMode(on) {
+            if (on) {
+                $editor.addClass('mi-cta-editor--new');
+                $hint.removeClass('mi-hidden');
+            } else {
+                $editor.removeClass('mi-cta-editor--new');
+                $hint.addClass('mi-hidden');
+            }
+        }
+
         $('#mi-cta-search-btn').on('click', function () {
             renderList($('#mi-cta-search').val());
         });
 
-        $('#mi-cta-add').on('click', function () {
-            $('#mi-cta-name').val('');
+        $('#mi-cta-add').on('click', function (e) {
+            e.preventDefault();
+            setNewCtaMode(true);
+            $('#mi-cta-name').val('').trigger('focus');
             $('#mi-cta-code').val('');
             $list.find('li').removeClass('mi-active');
         });
@@ -363,6 +384,7 @@
                 return x.name === name;
             });
             if (c) {
+                setNewCtaMode(false);
                 $('#mi-cta-name').val(c.name);
                 $('#mi-cta-code').val(c.code);
                 $list.find('li').removeClass('mi-active');
@@ -371,16 +393,29 @@
         });
 
         $list.on('click', '.mi-cta-del', function () {
-            var name = $(this).closest('li').data('name');
+            var $li = $(this).closest('li');
+            var name = $li.data('name');
+            var wasActive = $li.hasClass('mi-active');
             ajax('mi_delete_cta', { name: name }).done(function (res) {
                 if (res.success) {
                     allCt = res.data.ctas || [];
                     renderList($('#mi-cta-search').val());
+                    if (wasActive) {
+                        $('#mi-cta-name').val('');
+                        $('#mi-cta-code').val('');
+                        setNewCtaMode(false);
+                    }
                 }
             });
         });
 
         $('#mi-cta-save').on('click', function () {
+            var saveName = $.trim($('#mi-cta-name').val());
+            if (!saveName) {
+                alert(MIAdmin.i18n.ctaNameRequired || 'Please enter a name for this CTA.');
+                $('#mi-cta-name').trigger('focus');
+                return;
+            }
             ajax('mi_save_cta', {
                 name: $('#mi-cta-name').val(),
                 code: $('#mi-cta-code').val(),
@@ -388,6 +423,13 @@
                 if (res.success) {
                     allCt = res.data.ctas || [];
                     renderList($('#mi-cta-search').val());
+                    setNewCtaMode(false);
+                    $list.find('li').removeClass('mi-active');
+                    $list.find('li').each(function () {
+                        if ($(this).data('name') === saveName) {
+                            $(this).addClass('mi-active');
+                        }
+                    });
                     alert(MIAdmin.i18n.saved);
                 }
             });
@@ -547,7 +589,15 @@
                 if (res.success) {
                     renderQueue([]);
                     loadArticles($('#mi-upgrade-search').val());
-                    alert(res.data.message || MIAdmin.i18n.saved);
+                    var msg = res.data.message || MIAdmin.i18n.saved;
+                    if (res.data.failed && res.data.failed.length) {
+                        var parts = [msg];
+                        res.data.failed.forEach(function (f) {
+                            parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
+                        });
+                        msg = parts.join('\n');
+                    }
+                    alert(msg);
                 }
             });
         });

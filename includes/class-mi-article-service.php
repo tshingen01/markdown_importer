@@ -21,27 +21,92 @@ class MI_Article_Service
         return ['publish', 'private', 'draft', 'future'];
     }
 
-    public static function find_post_id_by_keyword($keyword)
+    /**
+     * Find another mi_article using the same keyword (case-insensitive), optionally excluding one post.
+     */
+    public static function find_post_id_by_keyword($keyword, $exclude_post_id = 0)
     {
-        $q = new WP_Query(
-            [
-                'post_type' => MI_Post_Type::POST_TYPE,
-                'post_status' => self::overview_statuses(),
-                'posts_per_page' => 1,
-                'meta_key' => self::META_KEYWORD,
-                'meta_value' => $keyword,
-                'fields' => 'ids',
-                'no_found_rows' => true,
-            ]
-        );
+        global $wpdb;
+        $keyword = trim((string) $keyword);
+        if ($keyword === '') {
+            return 0;
+        }
+        $kw_lower = strtolower($keyword);
+        $meta_key = self::META_KEYWORD;
+        $ptype = MI_Post_Type::POST_TYPE;
+        $statuses = self::overview_statuses();
+        $in_list = "'" . implode("','", array_map('esc_sql', $statuses)) . "'";
+        $sql = "SELECT p.ID FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
+                WHERE p.post_type = %s AND p.post_status IN ($in_list)
+                AND LOWER(TRIM(pm.meta_value)) = %s";
+        $params = [$meta_key, $ptype, $kw_lower];
+        if ((int) $exclude_post_id > 0) {
+            $sql .= ' AND p.ID != %d';
+            $params[] = (int) $exclude_post_id;
+        }
+        $sql .= ' LIMIT 1';
+        $pid = $wpdb->get_var($wpdb->prepare($sql, $params));
+        return $pid ? (int) $pid : 0;
+    }
+
+    /**
+     * Find another mi_article using the same URL slug, optionally excluding one post.
+     */
+    public static function find_post_id_by_slug($slug, $exclude_post_id = 0)
+    {
+        $slug = sanitize_title((string) $slug);
+        if ($slug === '') {
+            return 0;
+        }
+        $args = [
+            'post_type' => MI_Post_Type::POST_TYPE,
+            'post_status' => self::overview_statuses(),
+            'name' => $slug,
+            'posts_per_page' => 1,
+            'fields' => 'ids',
+            'no_found_rows' => true,
+        ];
+        if ((int) $exclude_post_id > 0) {
+            $args['post__not_in'] = [(int) $exclude_post_id];
+        }
+        $q = new WP_Query($args);
         if ($q->have_posts()) {
             return (int) $q->posts[0];
         }
         return 0;
     }
 
+    /**
+     * @return true|WP_Error
+     */
+    public static function validate_article_uniqueness($post_id, $keyword, $slug)
+    {
+        $keyword = trim((string) $keyword);
+        $slug = sanitize_title((string) $slug);
+        if ($keyword === '') {
+            return new WP_Error('mi_empty_keyword', __('Keyword cannot be empty.', 'markdown-importer'));
+        }
+        if ($slug === '') {
+            return new WP_Error('mi_empty_slug', __('URL slug cannot be empty.', 'markdown-importer'));
+        }
+        $exclude = (int) $post_id;
+        if (self::find_post_id_by_keyword($keyword, $exclude) > 0) {
+            return new WP_Error('mi_dup_keyword', __('This keyword is already used by another article.', 'markdown-importer'));
+        }
+        if (self::find_post_id_by_slug($slug, $exclude) > 0) {
+            return new WP_Error('mi_dup_slug', __('This URL slug is already used by another article.', 'markdown-importer'));
+        }
+        return true;
+    }
+
     public static function create_article(array $parsed, $release_form_value, array $image_map = [])
     {
+        $uniq = self::validate_article_uniqueness(0, $parsed['keyword'] ?? '', $parsed['slug'] ?? '');
+        if (is_wp_error($uniq)) {
+            return $uniq;
+        }
+
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
         $status = 'publish';
@@ -139,6 +204,11 @@ class MI_Article_Service
 
     public static function update_article($post_id, array $parsed, $release_form_value, array $image_map = [])
     {
+        $uniq = self::validate_article_uniqueness((int) $post_id, $parsed['keyword'] ?? '', $parsed['slug'] ?? '');
+        if (is_wp_error($uniq)) {
+            return $uniq;
+        }
+
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
 
@@ -224,9 +294,18 @@ class MI_Article_Service
         ];
     }
 
-    public static function save_article_from_request($post_id, $title, $slug, $meta_description, $markdown, $release_date, $visibility)
+    /**
+     * @return true|WP_Error
+     */
+    public static function save_article_from_request($post_id, $title, $keyword, $slug, $meta_description, $markdown, $release_date, $visibility)
     {
         $slug = sanitize_title($slug);
+        $uniq = self::validate_article_uniqueness((int) $post_id, $keyword, $slug);
+        if (is_wp_error($uniq)) {
+            return $uniq;
+        }
+
+        $keyword = trim((string) $keyword);
         $release = MI_Staging::parse_release_input($release_date);
         $post_date = MI_Staging::post_date_from_release($release);
         $status = $visibility === 'private' ? 'private' : 'publish';
@@ -242,9 +321,12 @@ class MI_Article_Service
                 'post_date_gmt' => get_gmt_from_date($post_date),
             ]
         );
+        update_post_meta($post_id, self::META_KEYWORD, $keyword);
         update_post_meta($post_id, self::META_MARKDOWN, $markdown);
         update_post_meta($post_id, self::META_RELEASE, $release);
         update_post_meta($post_id, '_mi_meta_description', $meta_description);
+
+        return true;
     }
 
     public static function sideload_image_file($file_path, $post_id, $filename_hint = '')
