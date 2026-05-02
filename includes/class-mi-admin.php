@@ -32,7 +32,7 @@ class MI_Admin
             'markdown-importer',
             [$this, 'render_page'],
             'dashicons-shield',
-            58
+            null
         );
     }
 
