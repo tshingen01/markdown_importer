@@ -56,6 +56,7 @@ class MI_Cta
                 continue;
             }
             $out[] = [
+                'display_name' => isset($row['name']) ? (string) "[[CTA::" . $row['name']."]]" : '',
                 'name' => isset($row['name']) ? (string) $row['name'] : '',
                 'code' => isset($row['code']) ? (string) $row['code'] : '',
             ];

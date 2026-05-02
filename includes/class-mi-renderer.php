@@ -8,14 +8,11 @@ class MI_Renderer
 {
     public static function head_meta()
     {
-        // if (! is_singular(MI_Post_Type::POST_TYPE)) {
-        //     return;
-        // }
-        $post = get_queried_object();
-        var_dump( $post);
-        if (! $post || empty($post->ID)) {
+        $post_type = get_post_type();
+        if (! is_singular($post_type)) {
             return;
         }
+        $post = get_post();
         $desc = (string) get_post_meta($post->ID, '_mi_meta_description', true);
         if ($desc === '') {
             $desc = (string) $post->post_excerpt;
@@ -27,7 +24,8 @@ class MI_Renderer
 
     public static function filter_content($content)
     {
-        if (! is_singular(MI_Post_Type::POST_TYPE)) {
+        $post_type = get_post_type();
+        if (! is_singular($post_type)) {
             return $content;
         }
         $post = get_post();
@@ -124,7 +122,7 @@ class MI_Renderer
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
-                return $cta;
+                return $cta['code'];
             },
             $text
         );
@@ -135,9 +133,10 @@ class MI_Renderer
      */
     private static function replace_article_keyword_links($text, $current_post_id)
     {
+        $post_type = get_post_type();
         return preg_replace_callback(
             '/\[\[([^:\[\]]+)\]\]/u',
-            function ($m) use ($current_post_id) {
+            function ($m) use ($current_post_id, $post_type) {
                 $key = trim($m[1]);
                 if ($key === '') {
                     return $m[0];
@@ -147,7 +146,7 @@ class MI_Renderer
                     return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
                 }
                 $post = get_post($pid);
-                if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
+                if (! $post || $post->post_type !== $post_type) {
                     return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
                 }
                 if ($post->post_status === 'private' && ! current_user_can('read_post', $pid)) {
@@ -163,12 +162,13 @@ class MI_Renderer
     }
 
     /**
-     * Block front-end access unless the post is publicly viewable (e.g. publish) or the user may read it (private/draft/future for editors).
+     * Block front-end access unless the post is publicly viewable (e.g. publish) or the user may read it (private/draft/public for editors).
      * Guests can view Public articles without logging in.
      */
     public static function template_redirect_private_article()
     {
-        if (! is_singular(MI_Post_Type::POST_TYPE)) {
+        $post_type = get_post_type();
+        if (! is_singular($post_type)) {
             return;
         }
         $post = get_queried_object();

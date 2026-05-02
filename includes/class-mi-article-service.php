@@ -109,7 +109,7 @@ class MI_Article_Service
 
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
-        $status = 'publish';
+        $status = 'private';
 
         $post_id = wp_insert_post(
             [

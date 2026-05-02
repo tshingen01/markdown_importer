@@ -344,7 +344,7 @@
                     '<li data-name="' +
                     esc(c.name) +
                     '"><span>' +
-                    esc(c.name) +
+                    esc(c.display_name) +
                     '</span><span><button type="button" class="button-link mi-cta-pick"><span class="dashicons dashicons-edit"></span></button> ' +
                     '<button type="button" class="button-link-delete mi-cta-del"><span class="dashicons dashicons-trash"></span></button></span></li>';
                 $list.append(li);

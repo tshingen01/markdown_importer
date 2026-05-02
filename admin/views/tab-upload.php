@@ -6,14 +6,14 @@ if (! defined('ABSPATH')) {
 <div id="mi-upload-root" class="mi-panel">
     <div class="mi-step-label" id="mi-upload-step-label"><?php esc_html_e('Upload [1/2]', 'markdown-importer'); ?></div>
 
-    <div class="mi-section-header"><?php esc_html_e('Upload new Articles / Images', 'markdown-importer'); ?></div>
+    <div class="mi-section-header"><?php esc_html_e('Upload new Articles', 'markdown-importer'); ?></div>
 
     <div id="mi-upload-step1">
         <div class="mi-dropzone" id="mi-dropzone">
             <p class="mi-dropzone-text"><?php esc_html_e('Drop files to upload', 'markdown-importer'); ?></p>
             <p class="mi-or"><?php esc_html_e('or', 'markdown-importer'); ?></p>
             <button type="button" class="button button-secondary" id="mi-file-picker"><?php esc_html_e('Select Files', 'markdown-importer'); ?></button>
-            <input type="file" id="mi-file-input" multiple accept=".md,.markdown,.png,.jpg,.jpeg,.gif,.webp,.svg,image/*" class="mi-hidden-input" />
+            <input type="file" id="mi-file-input" multiple accept=".md,.markdown" class="mi-hidden-input" />
         </div>
     </div>
 
