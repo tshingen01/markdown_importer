@@ -11,12 +11,22 @@ class MI_Article_Service
     const META_IMAGE_MAP = '_mi_image_map';
     const META_RELEASE = '_mi_release_display';
 
+    /**
+     * Statuses shown in Article Overview (scheduled posts use WP status "future").
+     *
+     * @return string[]
+     */
+    public static function overview_statuses()
+    {
+        return ['publish', 'private', 'draft', 'future'];
+    }
+
     public static function find_post_id_by_keyword($keyword)
     {
         $q = new WP_Query(
             [
                 'post_type' => MI_Post_Type::POST_TYPE,
-                'post_status' => ['publish', 'private', 'draft'],
+                'post_status' => self::overview_statuses(),
                 'posts_per_page' => 1,
                 'meta_key' => self::META_KEYWORD,
                 'meta_value' => $keyword,

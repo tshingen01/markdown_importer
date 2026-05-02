@@ -146,7 +146,15 @@
             ajax('mi_confirm_import').done(function (res) {
                 if (res.success) {
                     renderQueue([]);
-                    alert(res.data.message || MIAdmin.i18n.saved);
+                    var msg = res.data.message || MIAdmin.i18n.saved;
+                    if (res.data.failed && res.data.failed.length) {
+                        var parts = [msg];
+                        res.data.failed.forEach(function (f) {
+                            parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
+                        });
+                        msg = parts.join('\n');
+                    }
+                    alert(msg);
                 } else {
                     alert(MIAdmin.i18n.error);
                 }

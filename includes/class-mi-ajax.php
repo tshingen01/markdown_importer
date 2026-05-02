@@ -201,9 +201,24 @@ class MI_Ajax
         self::auth();
         $uid = get_current_user_id();
         $queue = MI_Staging::get_queue($uid);
+        if ($queue === []) {
+            wp_send_json_success(
+                [
+                    'created' => [],
+                    'failed' => [],
+                    'message' => __('Nothing to import — upload Markdown files first.', 'markdown-importer'),
+                ]
+            );
+            return;
+        }
         $created = [];
+        $failed = [];
         foreach ($queue as $item) {
             if (! empty($item['error'])) {
+                $failed[] = [
+                    'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                    'message' => (string) $item['error'],
+                ];
                 continue;
             }
             $parsed = [
@@ -215,6 +230,10 @@ class MI_Ajax
             ];
             $post_id = MI_Article_Service::create_article($parsed, $item['release_date'], []);
             if (is_wp_error($post_id)) {
+                $failed[] = [
+                    'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                    'message' => $post_id->get_error_message(),
+                ];
                 continue;
             }
             if (! empty($item['files_dir']) && is_dir($item['files_dir'])) {
@@ -224,7 +243,19 @@ class MI_Ajax
         }
         self::cleanup_staging_dirs($queue);
         MI_Staging::clear_queue($uid);
-        wp_send_json_success(['created' => $created, 'message' => __('Import completed.', 'markdown-importer')]);
+        $msg = __('Import completed.', 'markdown-importer');
+        if ($created === [] && $failed !== []) {
+            $msg = __('No articles were imported. Check row errors below.', 'markdown-importer');
+        } elseif ($failed !== []) {
+            $msg = __('Import finished with some errors.', 'markdown-importer');
+        }
+        wp_send_json_success(
+            [
+                'created' => $created,
+                'failed' => $failed,
+                'message' => $msg,
+            ]
+        );
     }
 
     public static function clear_import_queue()
@@ -244,7 +275,7 @@ class MI_Ajax
         $q = new WP_Query(
             [
                 'post_type' => MI_Post_Type::POST_TYPE,
-                'post_status' => ['publish', 'private', 'draft'],
+                'post_status' => MI_Article_Service::overview_statuses(),
                 'posts_per_page' => 200,
                 'orderby' => 'ID',
                 'order' => 'DESC',
