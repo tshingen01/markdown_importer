@@ -243,6 +243,30 @@
     margin-top: 12px;
 }
 
+.mi-cta-actions .button {
+    margin-right: 8px;
+}
+
+.mi-cta-actions .button:last-child {
+    margin-right: 0;
+}
+
+.mi-cta-preview-wrap {
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    background: #fff;
+    overflow: hidden;
+    min-height: 120px;
+}
+
+.mi-cta-preview-frame {
+    display: block;
+    width: 100%;
+    min-height: 160px;
+    height: 200px;
+    border: 0;
+}
+
 @media screen and (max-width: 960px) {
     .mi-editor-grid,
     .mi-cta-layout {

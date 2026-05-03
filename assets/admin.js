@@ -364,14 +364,45 @@
 
         var $editor = $('#mi-cta-editor');
         var $hint = $('#mi-cta-hint');
+        var previewTimer;
+
+        function updateCtaPreview() {
+            var snippet = $('#mi-cta-code').val() || '';
+            var frame = document.getElementById('mi-cta-preview-frame');
+            if (!frame) {
+                return;
+            }
+            var docHtml =
+                '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                '<style>html,body{margin:0;padding:12px;box-sizing:border-box;background:#fff;color:#1d2327;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.5;}</style>' +
+                '</head><body>' +
+                snippet +
+                '</body></html>';
+            try {
+                /* srcdoc works with a strict sandbox; document.write needs contentDocument (blocked without allow-same-origin). */
+                frame.srcdoc = docHtml;
+            } catch (e) {
+                /* ignore */
+            }
+        }
+
+        function scheduleCtaPreview() {
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(updateCtaPreview, 150);
+        }
+
+        $('#mi-cta-code').on('input change', scheduleCtaPreview);
+        scheduleCtaPreview();
 
         function setNewCtaMode(on) {
             if (on) {
                 $editor.addClass('mi-cta-editor--new');
                 $hint.removeClass('mi-hidden');
+                $('#mi-cta-cancel').removeClass('mi-hidden');
             } else {
                 $editor.removeClass('mi-cta-editor--new');
                 $hint.addClass('mi-hidden');
+                $('#mi-cta-cancel').addClass('mi-hidden');
             }
         }
 
@@ -384,6 +415,16 @@
             setNewCtaMode(true);
             $('#mi-cta-name').val('').trigger('focus');
             $('#mi-cta-code').val('');
+            scheduleCtaPreview();
+            $list.find('li').removeClass('mi-active');
+        });
+
+        $('#mi-cta-cancel').on('click', function (e) {
+            e.preventDefault();
+            $('#mi-cta-name').val('');
+            $('#mi-cta-code').val('');
+            scheduleCtaPreview();
+            setNewCtaMode(false);
             $list.find('li').removeClass('mi-active');
         });
 
@@ -396,6 +437,7 @@
                 setNewCtaMode(false);
                 $('#mi-cta-name').val(c.name);
                 $('#mi-cta-code').val(c.code);
+                scheduleCtaPreview();
                 $list.find('li').removeClass('mi-active');
                 $(this).closest('li').addClass('mi-active');
             }
@@ -412,6 +454,7 @@
                     if (wasActive) {
                         $('#mi-cta-name').val('');
                         $('#mi-cta-code').val('');
+                        scheduleCtaPreview();
                         setNewCtaMode(false);
                     }
                 }

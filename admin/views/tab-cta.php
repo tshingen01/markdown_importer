@@ -14,7 +14,15 @@ if (! defined('ABSPATH')) {
             <label class="mi-label"><?php esc_html_e('HTML / CSS', 'markdown-importer'); ?></label>
             <textarea class="widefat mi-code" rows="18" id="mi-cta-code"></textarea>
 
-            <p><button type="button" class="button button-primary" id="mi-cta-save"><?php esc_html_e('save', 'markdown-importer'); ?></button></p>
+            <label class="mi-label" for="mi-cta-preview-frame"><?php esc_html_e('Preview', 'markdown-importer'); ?></label>
+            <div class="mi-cta-preview-wrap">
+                <iframe id="mi-cta-preview-frame" class="mi-cta-preview-frame" title="<?php esc_attr_e('CTA preview', 'markdown-importer'); ?>" sandbox=""></iframe>
+            </div>
+
+            <p class="mi-cta-actions">
+                <button type="button" class="button button-primary" id="mi-cta-save"><?php esc_html_e('save', 'markdown-importer'); ?></button>
+                <button type="button" class="button mi-hidden" id="mi-cta-cancel"><?php esc_html_e('Cancel', 'markdown-importer'); ?></button>
+            </p>
         </div>
         <div class="mi-cta-list-wrap">
             <div class="mi-toolbar">
