@@ -12,7 +12,7 @@ if (! defined('ABSPATH')) {
             <input type="text" class="widefat" id="mi-cta-name" placeholder="CTA_START" />
 
             <label class="mi-label"><?php esc_html_e('HTML / CSS', 'markdown-importer'); ?></label>
-            <textarea class="widefat mi-code" rows="18" id="mi-cta-code"></textarea>
+            <textarea class="widefat mi-code" rows="18" id="mi-cta-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>
 
             <label class="mi-label" for="mi-cta-preview-frame"><?php esc_html_e('Preview', 'markdown-importer'); ?></label>
             <div class="mi-cta-preview-wrap">

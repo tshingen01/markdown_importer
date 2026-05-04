@@ -41,6 +41,7 @@ class MI_Admin
         if ($hook !== 'toplevel_page_markdown-importer') {
             return;
         }
+        wp_enqueue_code_editor(['type' => 'text/html']);
         wp_enqueue_style(
             'mi-admin',
             MI_PLUGIN_URL . 'assets/admin.css',
@@ -50,7 +51,7 @@ class MI_Admin
         wp_enqueue_script(
             'mi-admin',
             MI_PLUGIN_URL . 'assets/admin.js',
-            ['jquery'],
+            ['jquery', 'code-editor'],
             MI_VERSION,
             true
         );

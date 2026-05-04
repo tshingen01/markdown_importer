@@ -267,6 +267,36 @@
     border: 0;
 }
 
+#mi-cta-editor .CodeMirror {
+    height: 360px;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1d2327;
+    font-size: 13px;
+}
+
+#mi-cta-editor .CodeMirror-gutters {
+    background: #f6f7f7;
+    border-right: 1px solid #dcdcde;
+}
+
+#mi-cta-editor .CodeMirror-linenumber {
+    color: #646970;
+}
+
+#mi-cta-editor .CodeMirror-cursor {
+    border-left-color: #1d2327;
+}
+
+#mi-cta-editor .CodeMirror-selected {
+    background: #cce8ff;
+}
+
+#mi-cta-editor .CodeMirror-activeline-background {
+    background: #f0f6fc;
+}
+
 @media screen and (max-width: 960px) {
     .mi-editor-grid,
     .mi-cta-layout {

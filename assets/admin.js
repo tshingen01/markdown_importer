@@ -365,9 +365,54 @@
         var $editor = $('#mi-cta-editor');
         var $hint = $('#mi-cta-hint');
         var previewTimer;
+        var ctaCodeEditor = null;
+
+        function ctaCodeGet() {
+            if (ctaCodeEditor && ctaCodeEditor.codemirror) {
+                return ctaCodeEditor.codemirror.getValue();
+            }
+            return $('#mi-cta-code').val() || '';
+        }
+
+        function ctaCodeSet(value) {
+            var nextValue = value || '';
+            $('#mi-cta-code').val(nextValue);
+            if (ctaCodeEditor && ctaCodeEditor.codemirror) {
+                ctaCodeEditor.codemirror.setValue(nextValue);
+                ctaCodeEditor.codemirror.refresh();
+            }
+        }
+
+        function initCtaCodeEditor() {
+            if (!window.wp || !wp.codeEditor || !wp.codeEditor.initialize) {
+                $('#mi-cta-code').on('input change', scheduleCtaPreview);
+                return;
+            }
+            ctaCodeEditor = wp.codeEditor.initialize('mi-cta-code', {
+                codemirror: {
+                    mode: 'htmlmixed',
+                    lineNumbers: true,
+                    lineWrapping: false,
+                    matchBrackets: true,
+                    autoCloseBrackets: true,
+                    styleActiveLine: true,
+                    indentUnit: 2,
+                    tabSize: 2,
+                    indentWithTabs: false,
+                },
+            });
+            if (ctaCodeEditor && ctaCodeEditor.codemirror) {
+                ctaCodeEditor.codemirror.on('change', function () {
+                    $('#mi-cta-code').val(ctaCodeEditor.codemirror.getValue());
+                    scheduleCtaPreview();
+                });
+            } else {
+                $('#mi-cta-code').on('input change', scheduleCtaPreview);
+            }
+        }
 
         function updateCtaPreview() {
-            var snippet = $('#mi-cta-code').val() || '';
+            var snippet = ctaCodeGet();
             var frame = document.getElementById('mi-cta-preview-frame');
             if (!frame) {
                 return;
@@ -391,7 +436,7 @@
             previewTimer = setTimeout(updateCtaPreview, 150);
         }
 
-        $('#mi-cta-code').on('input change', scheduleCtaPreview);
+        initCtaCodeEditor();
         scheduleCtaPreview();
 
         function setNewCtaMode(on) {
@@ -414,7 +459,7 @@
             e.preventDefault();
             setNewCtaMode(true);
             $('#mi-cta-name').val('').trigger('focus');
-            $('#mi-cta-code').val('');
+            ctaCodeSet('');
             scheduleCtaPreview();
             $list.find('li').removeClass('mi-active');
         });
@@ -422,7 +467,7 @@
         $('#mi-cta-cancel').on('click', function (e) {
             e.preventDefault();
             $('#mi-cta-name').val('');
-            $('#mi-cta-code').val('');
+            ctaCodeSet('');
             scheduleCtaPreview();
             setNewCtaMode(false);
             $list.find('li').removeClass('mi-active');
@@ -436,7 +481,7 @@
             if (c) {
                 setNewCtaMode(false);
                 $('#mi-cta-name').val(c.name);
-                $('#mi-cta-code').val(c.code);
+                ctaCodeSet(c.code);
                 scheduleCtaPreview();
                 $list.find('li').removeClass('mi-active');
                 $(this).closest('li').addClass('mi-active');
@@ -453,7 +498,7 @@
                     renderList($('#mi-cta-search').val());
                     if (wasActive) {
                         $('#mi-cta-name').val('');
-                        $('#mi-cta-code').val('');
+                        ctaCodeSet('');
                         scheduleCtaPreview();
                         setNewCtaMode(false);
                     }
@@ -470,7 +515,7 @@
             }
             ajax('mi_save_cta', {
                 name: $('#mi-cta-name').val(),
-                code: $('#mi-cta-code').val(),
+                code: ctaCodeGet(),
             }).done(function (res) {
                 if (res.success) {
                     allCt = res.data.ctas || [];
