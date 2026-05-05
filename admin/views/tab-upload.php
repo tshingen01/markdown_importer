@@ -15,6 +15,31 @@ if (! defined('ABSPATH')) {
             <button type="button" class="button button-secondary" id="mi-file-picker"><?php esc_html_e('Select Files', 'markdown-importer'); ?></button>
             <input type="file" id="mi-file-input" multiple accept=".md,.markdown" class="mi-hidden-input" />
         </div>
+
+        <div class="mi-md-template">
+            <h3><?php esc_html_e('Markdown template (copy/paste)', 'markdown-importer'); ?></h3>
+            <textarea class="mi-md-template-code" readonly spellcheck="false">
+[[2026_05_21::18_55]]
+
+[[PRIVATE]]
+
+This article will explain to you how to invest in Bitcoin
+
+invest-in-bitcoin-today
+
+How to Invest in Bitcoin
+
+# How to Invest in Bitcoin
+
+Intro text...
+
+[[image::ALT-ATTRIBUTE::xxx.png]]
+[[Bitcoin::self]]
+[[https://google.com::Google::blank]]
+[[CTA::START]]
+            </textarea>
+            <p class="description"><?php esc_html_e('Line order: release, visibility, meta description, slug, title, then markdown body.', 'markdown-importer'); ?></p>
+        </div>
     </div>
 
     <div id="mi-upload-step2" class="mi-hidden">

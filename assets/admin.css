@@ -68,6 +68,32 @@
     display: none;
 }
 
+.mi-md-template {
+    margin-top: 16px;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    background: #fff;
+    padding: 12px;
+}
+
+.mi-md-template h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+.mi-md-template-code {
+    width: 100%;
+    min-height: 260px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    resize: vertical;
+}
+
+.mi-md-template .description {
+    margin: 8px 0 0;
+}
+
 .mi-toolbar {
     display: flex;
     gap: 0;

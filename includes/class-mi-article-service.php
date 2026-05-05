@@ -109,7 +109,11 @@ class MI_Article_Service
 
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
-        $status = 'private';
+        $status = isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private';
+        if (! in_array($status, ['publish', 'private', 'draft'], true)) {
+            $status = 'private';
+        }
+        $password = isset($parsed['password']) ? (string) $parsed['password'] : '';
 
         $post_id = wp_insert_post(
             [
@@ -121,6 +125,7 @@ class MI_Article_Service
                 'post_excerpt' => $parsed['meta_description'],
                 'post_date' => $post_date,
                 'post_date_gmt' => get_gmt_from_date($post_date),
+                'post_password' => $password,
             ],
             true
         );
@@ -211,18 +216,27 @@ class MI_Article_Service
 
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
+        $status = isset($parsed['visibility']) ? (string) $parsed['visibility'] : '';
+        $password = isset($parsed['password']) ? (string) $parsed['password'] : '';
 
-        $updated = wp_update_post(
-            [
-                'ID' => $post_id,
-                'post_title' => $parsed['title'],
-                'post_name' => $parsed['slug'],
-                'post_excerpt' => $parsed['meta_description'],
-                'post_date' => $post_date,
-                'post_date_gmt' => get_gmt_from_date($post_date),
-            ],
-            true
-        );
+        $update_data = [
+            'ID' => $post_id,
+            'post_title' => $parsed['title'],
+            'post_name' => $parsed['slug'],
+            'post_excerpt' => $parsed['meta_description'],
+            'post_date' => $post_date,
+            'post_date_gmt' => get_gmt_from_date($post_date),
+        ];
+        if (in_array($status, ['publish', 'private', 'draft'], true)) {
+            $update_data['post_status'] = $status;
+        }
+        if ($status === 'publish') {
+            $update_data['post_password'] = $password;
+        } elseif ($status === 'private' || $status === 'draft') {
+            $update_data['post_password'] = '';
+        }
+
+        $updated = wp_update_post($update_data, true);
 
         if (is_wp_error($updated)) {
             return $updated;

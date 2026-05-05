@@ -52,6 +52,8 @@ class MI_Renderer
         $work = (string) $markdown;
         $work = self::replace_cta_tags($work);
         $work = self::replace_image_tags($work, $post_id);
+        $work = self::replace_external_links_with_targets($work);
+        $work = self::replace_article_keyword_links_with_targets($work, (int) $post_id);
         $work = self::replace_article_keyword_links($work, (int) $post_id);
         if (! class_exists('Parsedown')) {
             return '<div class="mi-article"><pre>' . esc_html($work) . '</pre></div>';
@@ -83,6 +85,8 @@ class MI_Renderer
             $allowed['a'] = [];
         }
         $allowed['a']['class'] = true;
+        $allowed['a']['target'] = true;
+        $allowed['a']['rel'] = true;
         if (! isset($allowed['span'])) {
             $allowed['span'] = [];
         }
@@ -164,15 +168,16 @@ class MI_Renderer
     }
 
     /**
-     * [[Keyword]] → link to the mi_article with that keyword (no "::" in token — use [[CTA::x]] / [[image::…]] first).
+     * [[Keyword::target]] → link to the mi_article with that keyword (no "::" in token — use [[CTA::x]] / [[image::…]] first).
      */
-    private static function replace_article_keyword_links($text, $current_post_id)
+    private static function replace_article_keyword_links_with_targets($text, $current_post_id)
     {
         return preg_replace_callback(
-            '/\[\[([^:\[\]]+)\]\]/u',
+            '/\[\[([^:\[\]]+)::([^\]]+)\]\]/u',
             function ($m) use ($current_post_id) {
                 $key = trim($m[1]);
-                if ($key === '') {
+                $raw_target = trim($m[2]);
+                if ($key === '' || $raw_target === '') {
                     return $m[0];
                 }
                 $pid = MI_Article_Service::find_post_id_by_keyword($key, 0);
@@ -189,10 +194,63 @@ class MI_Renderer
                 $url = get_permalink($pid);
                 $title = get_the_title($pid);
                 $label = $title !== '' ? $title : $key;
-                return '<a href="' . esc_url($url) . '" class="mi-article-link">' . esc_html($label) . '</a>';
+                return self::build_link_html($url, $label, $raw_target);
             },
             $text
         );
+    }
+
+    /**
+     * [[https://example.com::Label::target]] → external link with target.
+     */
+    private static function replace_external_links_with_targets($text)
+    {
+        return preg_replace_callback(
+            '/\[\[((?:https?:\/\/|mailto:)[^\]]+?)::([^:\]]+)::([^\]]+)\]\]/iu',
+            function ($m) {
+                $url = trim($m[1]);
+                $label = trim($m[2]);
+                $raw_target = trim($m[3]);
+                if ($url === '' || $label === '') {
+                    return $m[0];
+                }
+                return self::build_link_html($url, $label, $raw_target);
+            },
+            $text
+        );
+    }
+
+    private static function normalize_target($raw_target)
+    {
+        $target = trim((string) $raw_target);
+        if ($target === '') {
+            return '_self';
+        }
+        $lookup = strtolower($target);
+        $map = [
+            'blank' => '_blank',
+            '_blank' => '_blank',
+            'self' => '_self',
+            '_self' => '_self',
+            'parent' => '_parent',
+            '_parent' => '_parent',
+            'top' => '_top',
+            '_top' => '_top',
+            'unfencedtop' => '_unfencedTop',
+            '_unfencedtop' => '_unfencedTop',
+        ];
+        if (isset($map[$lookup])) {
+            return $map[$lookup];
+        }
+        $safe = preg_replace('/[^A-Za-z0-9_-]/', '', $target);
+        return $safe !== '' ? $safe : '_self';
+    }
+
+    private static function build_link_html($url, $label, $raw_target)
+    {
+        $target = self::normalize_target($raw_target);
+        $rel = $target === '_blank' ? ' rel="noopener noreferrer"' : '';
+        return '<a href="' . esc_url($url) . '" class="mi-article-link" target="' . esc_attr($target) . '"' . $rel . '>' . esc_html($label) . '</a>';
     }
 
     /**

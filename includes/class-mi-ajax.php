@@ -113,6 +113,8 @@ class MI_Ajax
                     'meta_description' => '',
                     'markdown' => '',
                     'release_date' => 'now',
+                    'visibility' => 'private',
+                    'password' => '',
                     'error' => __('Could not read file.', 'markdown-importer'),
                 ];
                 continue;
@@ -131,6 +133,8 @@ class MI_Ajax
                     'meta_description' => '',
                     'markdown' => '',
                     'release_date' => 'now',
+                    'visibility' => 'private',
+                    'password' => '',
                     'error' => isset($parsed['error']) ? (string) $parsed['error'] : __('Invalid markdown file.', 'markdown-importer'),
                 ];
                 continue;
@@ -148,6 +152,8 @@ class MI_Ajax
                 'meta_description' => $parsed['meta_description'],
                 'markdown' => $parsed['markdown'],
                 'release_date' => MI_Staging::release_for_form($rel),
+                'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
+                'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
                 'error' => '',
             ];
         }
@@ -227,6 +233,8 @@ class MI_Ajax
                 'meta_description' => $item['meta_description'],
                 'markdown' => $item['markdown'],
                 'keyword' => $item['keyword'],
+                'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : 'private',
+                'password' => isset($item['password']) ? (string) $item['password'] : '',
             ];
             $post_id = MI_Article_Service::create_article($parsed, $item['release_date'], []);
             if (is_wp_error($post_id)) {
@@ -444,6 +452,8 @@ class MI_Ajax
                     'meta_description' => '',
                     'markdown' => '',
                     'release_date' => 'now',
+                    'visibility' => 'private',
+                    'password' => '',
                     'error' => isset($parsed['error']) ? (string) $parsed['error'] : __('Invalid markdown file.', 'markdown-importer'),
                 ];
                 continue;
@@ -463,6 +473,8 @@ class MI_Ajax
                     'meta_description' => $parsed['meta_description'],
                     'markdown' => $parsed['markdown'],
                     'release_date' => MI_Staging::release_for_form((string) $parsed['release_normalized']),
+                    'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
+                    'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
                     'error' => __('No existing article matches this keyword (filename base).', 'markdown-importer'),
                 ];
                 continue;
@@ -481,6 +493,8 @@ class MI_Ajax
                 'meta_description' => $parsed['meta_description'],
                 'markdown' => $parsed['markdown'],
                 'release_date' => MI_Staging::release_for_form($rel),
+                'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
+                'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
                 'error' => '',
             ];
         }
@@ -545,6 +559,8 @@ class MI_Ajax
                 'meta_description' => $item['meta_description'],
                 'markdown' => $item['markdown'],
                 'keyword' => $item['keyword'],
+                'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : '',
+                'password' => isset($item['password']) ? (string) $item['password'] : '',
             ];
             $post_id = MI_Article_Service::update_article((int) $item['target_post_id'], $parsed, $item['release_date'], []);
             if (is_wp_error($post_id)) {
