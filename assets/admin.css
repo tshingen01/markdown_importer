@@ -337,6 +337,19 @@
     color: #8e1e21;
 }
 
+#mi-articles-table td:last-child {
+    white-space: nowrap;
+}
+
+#mi-articles-table td:last-child .button {
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+#mi-articles-table td:last-child .button:last-child {
+    margin-right: 0;
+}
+
 .mi-preview-link {
     text-decoration: none;
 }

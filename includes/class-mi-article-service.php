@@ -10,6 +10,8 @@ class MI_Article_Service
     const META_MARKDOWN = '_mi_markdown';
     const META_IMAGE_MAP = '_mi_image_map';
     const META_RELEASE = '_mi_release_display';
+    const META_PENDING_UPGRADE = '_mi_pending_upgrade';
+    const CRON_HOOK_APPLY_UPGRADE = 'mi_apply_scheduled_upgrade';
 
     /**
      * Statuses shown in Article Overview (scheduled posts use WP status "future").
@@ -39,6 +41,33 @@ class MI_Article_Service
         $sql = "SELECT p.ID FROM {$wpdb->posts} p
                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
                 WHERE p.post_type = %s AND p.post_status IN ($in_list)
+                AND LOWER(TRIM(pm.meta_value)) = %s";
+        $params = [$meta_key, $ptype, $kw_lower];
+        if ((int) $exclude_post_id > 0) {
+            $sql .= ' AND p.ID != %d';
+            $params[] = (int) $exclude_post_id;
+        }
+        $sql .= ' LIMIT 1';
+        $pid = $wpdb->get_var($wpdb->prepare($sql, $params));
+        return $pid ? (int) $pid : 0;
+    }
+
+    /**
+     * Find published (online) mi_article by keyword (case-insensitive).
+     */
+    public static function find_published_post_id_by_keyword($keyword, $exclude_post_id = 0)
+    {
+        global $wpdb;
+        $keyword = trim((string) $keyword);
+        if ($keyword === '') {
+            return 0;
+        }
+        $kw_lower = strtolower($keyword);
+        $meta_key = self::META_KEYWORD;
+        $ptype = MI_Post_Type::POST_TYPE;
+        $sql = "SELECT p.ID FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
+                WHERE p.post_type = %s AND p.post_status = 'publish'
                 AND LOWER(TRIM(pm.meta_value)) = %s";
         $params = [$meta_key, $ptype, $kw_lower];
         if ((int) $exclude_post_id > 0) {
@@ -246,6 +275,94 @@ class MI_Article_Service
         return $post_id;
     }
 
+    /**
+     * Schedule an article overwrite at release datetime, or apply immediately if due.
+     *
+     * @return array{scheduled:bool,post_id:int,release:string}|WP_Error
+     */
+    public static function schedule_or_apply_upgrade($post_id, array $parsed, $release_form_value, $files_dir = '')
+    {
+        $post_id = (int) $post_id;
+        $release = MI_Staging::parse_release_input($release_form_value);
+        $release_ts = self::release_to_timestamp($release);
+        if ($release_ts <= time()) {
+            $image_map = [];
+            if ($files_dir !== '' && is_dir($files_dir)) {
+                $image_map = self::import_images_for_post($post_id, $files_dir, isset($parsed['markdown']) ? (string) $parsed['markdown'] : '');
+            }
+            $updated = self::update_article($post_id, $parsed, $release, $image_map);
+            if (is_wp_error($updated)) {
+                return $updated;
+            }
+            return ['scheduled' => false, 'post_id' => $post_id, 'release' => $release];
+        }
+
+        $image_map = [];
+        if ($files_dir !== '' && is_dir($files_dir)) {
+            $image_map = self::import_images_for_post($post_id, $files_dir, isset($parsed['markdown']) ? (string) $parsed['markdown'] : '');
+        }
+        $pending = [
+            'parsed' => $parsed,
+            'release' => $release,
+            'image_map' => $image_map,
+        ];
+        update_post_meta($post_id, self::META_PENDING_UPGRADE, $pending);
+        self::clear_scheduled_upgrade($post_id);
+        wp_schedule_single_event($release_ts, self::CRON_HOOK_APPLY_UPGRADE, [$post_id]);
+
+        return ['scheduled' => true, 'post_id' => $post_id, 'release' => $release];
+    }
+
+    public static function apply_scheduled_upgrade($post_id)
+    {
+        $post_id = (int) $post_id;
+        if ($post_id <= 0) {
+            return;
+        }
+        $pending = get_post_meta($post_id, self::META_PENDING_UPGRADE, true);
+        if (! is_array($pending) || empty($pending['parsed']) || ! is_array($pending['parsed'])) {
+            return;
+        }
+        $parsed = $pending['parsed'];
+        $release = isset($pending['release']) ? (string) $pending['release'] : 'now';
+        $image_map = isset($pending['image_map']) && is_array($pending['image_map']) ? $pending['image_map'] : [];
+        $updated = self::update_article($post_id, $parsed, $release, $image_map);
+        if (! is_wp_error($updated)) {
+            delete_post_meta($post_id, self::META_PENDING_UPGRADE);
+            self::clear_scheduled_upgrade($post_id);
+        }
+    }
+
+    private static function clear_scheduled_upgrade($post_id)
+    {
+        $post_id = (int) $post_id;
+        $next = wp_next_scheduled(self::CRON_HOOK_APPLY_UPGRADE, [$post_id]);
+        while ($next) {
+            wp_unschedule_event($next, self::CRON_HOOK_APPLY_UPGRADE, [$post_id]);
+            $next = wp_next_scheduled(self::CRON_HOOK_APPLY_UPGRADE, [$post_id]);
+        }
+    }
+
+    private static function release_to_timestamp($release_normalized)
+    {
+        $release = (string) $release_normalized;
+        if ($release === '' || strtolower($release) === 'now') {
+            return time();
+        }
+        $tz = wp_timezone();
+        try {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $release)) {
+                $release .= ' 12:00:00';
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/', $release)) {
+                $release .= ':00';
+            }
+            $d = new DateTimeImmutable($release, $tz);
+            return (int) $d->getTimestamp();
+        } catch (Exception $e) {
+            return time();
+        }
+    }
+
     public static function attach_meta($post_id, array $parsed, $release_normalized, array $image_map)
     {
         update_post_meta($post_id, self::META_KEYWORD, $parsed['keyword']);
@@ -285,6 +402,25 @@ class MI_Article_Service
             $update['post_password'] = '';
         }
         wp_update_post($update);
+    }
+
+    /**
+     * Remove plugin-specific metadata/schedules, then hard-delete the article.
+     */
+    public static function delete_article($post_id)
+    {
+        $post_id = (int) $post_id;
+        if ($post_id <= 0) {
+            return;
+        }
+        self::clear_scheduled_upgrade($post_id);
+        delete_post_meta($post_id, self::META_KEYWORD);
+        delete_post_meta($post_id, self::META_MARKDOWN);
+        delete_post_meta($post_id, self::META_IMAGE_MAP);
+        delete_post_meta($post_id, self::META_RELEASE);
+        delete_post_meta($post_id, self::META_PENDING_UPGRADE);
+        delete_post_meta($post_id, '_mi_meta_description');
+        wp_delete_post($post_id, true);
     }
 
     public static function get_article_payload($post_id)

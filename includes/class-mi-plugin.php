@@ -34,6 +34,7 @@ class MI_Plugin
         add_action('template_redirect', [MI_Renderer::class, 'template_redirect_private_article'], 5);
         add_action('wp_head', [MI_Renderer::class, 'head_meta'], 1);
         add_filter('the_content', [MI_Renderer::class, 'filter_content'], 8);
+        add_action(MI_Article_Service::CRON_HOOK_APPLY_UPGRADE, [MI_Article_Service::class, 'apply_scheduled_upgrade'], 10, 1);
 
         if (is_admin()) {
             MI_Admin::instance();

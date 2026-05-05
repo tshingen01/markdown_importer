@@ -9,6 +9,118 @@
         return $('<div/>').text(s == null ? '' : String(s)).html();
     }
 
+    function releaseToToken(release) {
+        var v = $.trim(String(release || 'now'));
+        if (!v || v.toLowerCase() === 'now') {
+            return '[[now]]';
+        }
+        var m = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?$/);
+        if (!m) {
+            return '[[now]]';
+        }
+        var hh = m[4] || '12';
+        var mm = m[5] || '00';
+        return '[[' + m[1] + '_' + m[2] + '_' + m[3] + '::' + hh + '_' + mm + ']]';
+    }
+
+    function visibilityToToken(visibility, password) {
+        var vis = String(visibility || 'private').toLowerCase();
+        var pwd = $.trim(String(password || ''));
+        if (vis === 'publish') {
+            return pwd ? '[[PUBLIC::' + pwd + ']]' : '[[PUBLIC]]';
+        }
+        if (vis === 'draft') {
+            return '[[DRAFT]]';
+        }
+        return '[[PRIVATE]]';
+    }
+
+    function buildStructuredMd(article) {
+        var body = String(article.markdown || '').replace(/^\n+/, '');
+        return (
+            releaseToToken(article.release_date) +
+            '\n\n' +
+            visibilityToToken(article.visibility, article.password) +
+            '\n\n' +
+            String(article.meta_description || '') +
+            '\n\n' +
+            String(article.slug || '') +
+            '\n\n' +
+            String(article.title || '') +
+            '\n\n' +
+            body
+        );
+    }
+
+    function parseReleaseToken(line) {
+        var raw = $.trim(line || '');
+        var mNow = raw.match(/^\[\[\s*now\s*\]\]$/i);
+        if (mNow) {
+            return 'now';
+        }
+        var m = raw.match(/^\[\[(\d{4})[ _-](\d{2})[ _-](\d{2})::(\d{2})[ _-](\d{2})\]\]$/i);
+        if (!m) {
+            return null;
+        }
+        return m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5];
+    }
+
+    function parseVisibilityToken(line) {
+        var raw = $.trim(line || '');
+        var m = raw.match(/^\[\[(.+)\]\]$/);
+        if (!m) {
+            return null;
+        }
+        var inner = $.trim(m[1]);
+        if (/^PRIVATE$/i.test(inner)) {
+            return { visibility: 'private', password: '' };
+        }
+        if (/^DRAFT$/i.test(inner)) {
+            return { visibility: 'draft', password: '' };
+        }
+        if (/^PUBLIC$/i.test(inner)) {
+            return { visibility: 'publish', password: '' };
+        }
+        var p = inner.match(/^PUBLIC::(.+)$/i);
+        if (p) {
+            return { visibility: 'publish', password: $.trim(p[1]) };
+        }
+        return null;
+    }
+
+    function parseStructuredMd(md) {
+        var content = String(md || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        var lines = content.split('\n');
+        if (lines.length < 11) {
+            return { ok: false, message: 'Invalid MD structure. Expect at least 11 lines.' };
+        }
+        var releaseDate = parseReleaseToken(lines[0]);
+        if (!releaseDate) {
+            return { ok: false, message: 'Line 1 must be [[YYYY_MM_DD::HH_MM]] or [[now]].' };
+        }
+        var vis = parseVisibilityToken(lines[2]);
+        if (!vis) {
+            return { ok: false, message: 'Line 3 must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].' };
+        }
+        var meta = $.trim(lines[4] || '');
+        var slug = $.trim(lines[6] || '');
+        var title = $.trim(lines[8] || '');
+        if (!slug || !title) {
+            return { ok: false, message: 'Line 7 (slug) and line 9 (title) are required.' };
+        }
+        var markdown = lines.slice(10).join('\n').replace(/^\n+/, '');
+        return {
+            ok: true,
+            release_date: releaseDate,
+            visibility: vis.visibility,
+            password: vis.password,
+            meta_description: meta,
+            slug: slug,
+            title: title,
+            markdown: markdown,
+        };
+    }
+
     function visibilityLabel(status, password) {
         var s = String(status || '').toLowerCase();
         if (s === 'private') {
@@ -320,7 +432,7 @@
                 $('#mi-e-keyword').val(a.keyword || '');
                 $('#mi-e-slug').val(a.slug);
                 $('#mi-e-meta').val(a.meta_description);
-                $('#mi-e-md').val(a.markdown);
+                $('#mi-e-md').val(buildStructuredMd(a));
                 $('#mi-e-release').val(a.release_date);
                 $('#mi-e-password').val(a.password || '');
                 $('input[name="mi-e-vis"][value="' + (a.visibility || 'private') + '"]').prop('checked', true);
@@ -337,18 +449,30 @@
             if (!currentId) {
                 return;
             }
+            var parsedMd = parseStructuredMd($('#mi-e-md').val());
+            if (!parsedMd.ok) {
+                alert(parsedMd.message || MIAdmin.i18n.error);
+                return;
+            }
             ajax('mi_save_article', {
                 id: currentId,
-                title: $('#mi-e-title').val(),
+                title: parsedMd.title,
                 keyword: $('#mi-e-keyword').val(),
-                slug: $('#mi-e-slug').val(),
-                meta_description: $('#mi-e-meta').val(),
-                markdown: $('#mi-e-md').val(),
-                release_date: $('#mi-e-release').val(),
-                visibility: $('input[name="mi-e-vis"]:checked').val(),
-                password: $('#mi-e-password').val(),
+                slug: parsedMd.slug,
+                meta_description: parsedMd.meta_description,
+                markdown: parsedMd.markdown,
+                release_date: parsedMd.release_date,
+                visibility: parsedMd.visibility,
+                password: parsedMd.password,
             }).done(function (res) {
                 if (res.success) {
+                    $('#mi-e-title').val(parsedMd.title);
+                    $('#mi-e-slug').val(parsedMd.slug);
+                    $('#mi-e-meta').val(parsedMd.meta_description);
+                    $('#mi-e-release').val(parsedMd.release_date);
+                    $('#mi-e-password').val(parsedMd.password);
+                    $('input[name="mi-e-vis"][value="' + parsedMd.visibility + '"]').prop('checked', true);
+                    syncPasswordField();
                     alert(MIAdmin.i18n.saved);
                     loadList($('#mi-articles-search').val());
                 } else if (res.data && res.data.message) {
@@ -707,6 +831,23 @@
             });
         });
 
+        function persistUpgradeReleaseInputs() {
+            var requests = [];
+            $qBody.find('tr').each(function () {
+                var $tr = $(this);
+                var id = $tr.data('id');
+                var release = $tr.find('.mi-release-input').val();
+                if (!id) {
+                    return;
+                }
+                requests.push(ajax('mi_patch_upgrade_item', { id: id, release_date: release }));
+            });
+            if (!requests.length) {
+                return $.Deferred().resolve().promise();
+            }
+            return $.when.apply($, requests);
+        }
+
         $qBody.on('click', '.mi-uq-remove', function () {
             ajax('mi_remove_upgrade_item', { id: $(this).closest('tr').data('id') }).done(function (res) {
                 if (res.success) {
@@ -719,20 +860,22 @@
             if (!window.confirm(MIAdmin.i18n.confirmUpgrade)) {
                 return;
             }
-            ajax('mi_confirm_upgrade').done(function (res) {
-                if (res.success) {
-                    renderQueue([]);
-                    loadArticles($('#mi-upgrade-search').val());
-                    var msg = res.data.message || MIAdmin.i18n.saved;
-                    if (res.data.failed && res.data.failed.length) {
-                        var parts = [msg];
-                        res.data.failed.forEach(function (f) {
-                            parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
-                        });
-                        msg = parts.join('\n');
+            persistUpgradeReleaseInputs().always(function () {
+                ajax('mi_confirm_upgrade').done(function (res) {
+                    if (res.success) {
+                        renderQueue([]);
+                        loadArticles($('#mi-upgrade-search').val());
+                        var msg = res.data.message || MIAdmin.i18n.saved;
+                        if (res.data.failed && res.data.failed.length) {
+                            var parts = [msg];
+                            res.data.failed.forEach(function (f) {
+                                parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
+                            });
+                            msg = parts.join('\n');
+                        }
+                        alert(msg);
                     }
-                    alert(msg);
-                }
+                });
             });
         });
 

@@ -351,7 +351,7 @@ class MI_Ajax
         if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
             wp_send_json_error(['message' => __('Article not found.', 'markdown-importer')]);
         }
-        wp_delete_post($id, true);
+        MI_Article_Service::delete_article($id);
         wp_send_json_success(['deleted' => $id]);
     }
 
@@ -461,7 +461,7 @@ class MI_Ajax
                 continue;
             }
 
-            $target = MI_Article_Service::find_post_id_by_keyword($parsed['keyword']);
+            $target = MI_Article_Service::find_published_post_id_by_keyword($parsed['keyword']);
             if ($target <= 0) {
                 $queue[] = [
                     'id' => MI_Staging::make_item_id(),
@@ -477,7 +477,7 @@ class MI_Ajax
                     'release_date' => MI_Staging::release_for_form((string) $parsed['release_normalized']),
                     'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
                     'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
-                    'error' => __('No existing article matches this keyword (filename base).', 'markdown-importer'),
+                    'error' => __('No published article matches this keyword (filename base).', 'markdown-importer'),
                 ];
                 continue;
             }
@@ -551,6 +551,8 @@ class MI_Ajax
         $uid = get_current_user_id();
         $queue = self::read_upgrade_queue($uid);
         $failed = [];
+        $updated_now = [];
+        $scheduled = [];
         foreach ($queue as $item) {
             if (! empty($item['error']) || empty($item['target_post_id'])) {
                 continue;
@@ -564,25 +566,50 @@ class MI_Ajax
                 'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : '',
                 'password' => isset($item['password']) ? (string) $item['password'] : '',
             ];
-            $post_id = MI_Article_Service::update_article((int) $item['target_post_id'], $parsed, $item['release_date'], []);
-            if (is_wp_error($post_id)) {
+            $result = MI_Article_Service::schedule_or_apply_upgrade(
+                (int) $item['target_post_id'],
+                $parsed,
+                isset($item['release_date']) ? (string) $item['release_date'] : 'now',
+                ! empty($item['files_dir']) ? (string) $item['files_dir'] : ''
+            );
+            if (is_wp_error($result)) {
                 $failed[] = [
                     'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
-                    'message' => $post_id->get_error_message(),
+                    'message' => $result->get_error_message(),
                 ];
                 continue;
             }
-            if (! empty($item['files_dir']) && is_dir($item['files_dir'])) {
-                MI_Article_Service::import_images_for_post((int) $item['target_post_id'], $item['files_dir'], isset($item['markdown']) ? (string) $item['markdown'] : '');
+            if (! empty($result['scheduled'])) {
+                $scheduled[] = [
+                    'post_id' => (int) $result['post_id'],
+                    'release' => (string) $result['release'],
+                ];
+            } else {
+                $updated_now[] = (int) $result['post_id'];
             }
         }
         self::cleanup_staging_dirs($queue);
         self::clear_upgrade_queue_user($uid);
-        $msg = __('Articles updated.', 'markdown-importer');
-        if ($failed !== []) {
-            $msg = __('Some updates could not be saved (duplicate keyword or slug).', 'markdown-importer');
+        if ($updated_now !== [] && $scheduled !== []) {
+            $msg = __('Some articles were updated now and others were scheduled for their release date.', 'markdown-importer');
+        } elseif ($scheduled !== []) {
+            $msg = __('Articles scheduled. They will overwrite existing content at the release date/time.', 'markdown-importer');
+        } else {
+            $msg = __('Articles updated.', 'markdown-importer');
         }
-        wp_send_json_success(['failed' => $failed, 'message' => $msg]);
+        if ($failed !== [] && $updated_now === [] && $scheduled === []) {
+            $msg = __('No upgrades were applied. Please check errors.', 'markdown-importer');
+        } elseif ($failed !== []) {
+            $msg = __('Some upgrades could not be saved. Please check errors.', 'markdown-importer');
+        }
+        wp_send_json_success(
+            [
+                'failed' => $failed,
+                'updated_now' => $updated_now,
+                'scheduled' => $scheduled,
+                'message' => $msg,
+            ]
+        );
     }
 
     public static function clear_upgrade_queue()
