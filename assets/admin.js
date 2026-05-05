@@ -811,7 +811,15 @@
                 contentType: false,
             }).done(function (res) {
                 if (res.success) {
-                    renderQueue(res.data.queue || []);
+                    var q = res.data.queue || [];
+                    renderQueue(q);
+                    if (!q.length) {
+                        alert('No staged updates. Ensure the filename keyword matches an existing published article (example: Bitcoin.md -> keyword Bitcoin).');
+                    }
+                } else if (res.data && res.data.message) {
+                    alert(res.data.message);
+                } else {
+                    alert(MIAdmin.i18n.error);
                 }
             });
         }

@@ -6,6 +6,11 @@ if (! defined('ABSPATH')) {
 
 class MI_Renderer
 {
+    private static function can_view_private_articles()
+    {
+        return is_user_logged_in() && (current_user_can('manage_options') || current_user_can('edit_others_posts'));
+    }
+
     private static function is_target_singular()
     {
         if (! is_singular()) {
@@ -104,25 +109,16 @@ class MI_Renderer
 
     private static function replace_image_tags($text, $post_id)
     {
-        $map = get_post_meta($post_id, '_mi_image_map', true);
-        if (! is_array($map)) {
-            $map = [];
-        }
-        $cb = function ($file, $alt) use ($map) {
+        $cb = function ($file, $alt) {
             $file = trim($file);
             $alt = trim($alt);
             if ($file === '') {
                 return '';
             }
             $url = '';
-            if (isset($map[$file]) && (int) $map[$file] > 0) {
-                $url = wp_get_attachment_url((int) $map[$file]);
-            }
-            if (! $url) {
-                $att = self::find_attachment_by_basename($file);
-                if ($att) {
-                    $url = wp_get_attachment_url($att);
-                }
+            $att = self::find_attachment_by_basename($file);
+            if ($att) {
+                $url = wp_get_attachment_url($att);
             }
             if (! $url) {
                 return '<span class="mi-missing-image">' . esc_html($file) . '</span>';
@@ -197,7 +193,7 @@ class MI_Renderer
                 if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
                     return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
                 }
-                if ($post->post_status === 'private' && ! current_user_can('read_post', $pid)) {
+                if ($post->post_status === 'private' && ! self::can_view_private_articles()) {
                     return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
                 }
                 $url = get_permalink($pid);
@@ -229,7 +225,7 @@ class MI_Renderer
                 if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
                     return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
                 }
-                if ($post->post_status === 'private' && ! current_user_can('read_post', $pid)) {
+                if ($post->post_status === 'private' && ! self::can_view_private_articles()) {
                     return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
                 }
                 $url = get_permalink($pid);
@@ -310,7 +306,7 @@ class MI_Renderer
         if (is_post_publicly_viewable($post)) {
             return;
         }
-        if (current_user_can('read_post', $post->ID)) {
+        if ($post->post_status === 'private' && self::can_view_private_articles()) {
             return;
         }
         global $wp_query;

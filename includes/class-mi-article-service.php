@@ -8,7 +8,6 @@ class MI_Article_Service
 {
     const META_KEYWORD = '_mi_keyword';
     const META_MARKDOWN = '_mi_markdown';
-    const META_IMAGE_MAP = '_mi_image_map';
     const META_RELEASE = '_mi_release_display';
     const META_PENDING_UPGRADE = '_mi_pending_upgrade';
     const CRON_HOOK_APPLY_UPGRADE = 'mi_apply_scheduled_upgrade';
@@ -203,10 +202,6 @@ class MI_Article_Service
                 }
             }
         }
-        if ($map !== []) {
-            $merged = self::merge_image_map($post_id, $map);
-            update_post_meta($post_id, self::META_IMAGE_MAP, $merged);
-        }
         return $map;
     }
 
@@ -369,23 +364,7 @@ class MI_Article_Service
         update_post_meta($post_id, self::META_MARKDOWN, $parsed['markdown']);
         update_post_meta($post_id, self::META_RELEASE, $release_normalized);
         update_post_meta($post_id, '_mi_meta_description', $parsed['meta_description']);
-
-        $merged = self::merge_image_map($post_id, $image_map);
-        update_post_meta($post_id, self::META_IMAGE_MAP, $merged);
-    }
-
-    private static function merge_image_map($post_id, array $new_map)
-    {
-        $old = get_post_meta($post_id, self::META_IMAGE_MAP, true);
-        if (! is_array($old)) {
-            $old = [];
-        }
-        foreach ($new_map as $k => $v) {
-            if ((int) $v > 0) {
-                $old[$k] = (int) $v;
-            }
-        }
-        return $old;
+        delete_post_meta($post_id, '_mi_image_map');
     }
 
     public static function set_visibility($post_id, $status)
@@ -416,7 +395,7 @@ class MI_Article_Service
         self::clear_scheduled_upgrade($post_id);
         delete_post_meta($post_id, self::META_KEYWORD);
         delete_post_meta($post_id, self::META_MARKDOWN);
-        delete_post_meta($post_id, self::META_IMAGE_MAP);
+        delete_post_meta($post_id, '_mi_image_map');
         delete_post_meta($post_id, self::META_RELEASE);
         delete_post_meta($post_id, self::META_PENDING_UPGRADE);
         delete_post_meta($post_id, '_mi_meta_description');

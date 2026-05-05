@@ -63,7 +63,7 @@ class MI_Staging
         }
         $ts = strtotime($v);
         if ($ts !== false) {
-            return gmdate('Y-m-d', $ts);
+            return gmdate('Y-m-d H:i', $ts);
         }
         return 'now';
     }
