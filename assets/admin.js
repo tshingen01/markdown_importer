@@ -49,7 +49,7 @@
                     '<td>' +
                     esc(row.slug) +
                     '</td>' +
-                    '<td><input type="text" class="mi-release-input" value="' +
+                    '<td><input type="text" class="mi-release-input" placeholder="[[now]] or [[YYYY_MM_DD::HH_mm]]" value="' +
                     rd +
                     '" /></td>' +
                     '<td class="mi-inline-actions">' +
@@ -596,7 +596,7 @@
                     '<td>' +
                     esc(row.slug) +
                     '</td>' +
-                    '<td><input type="text" class="mi-release-input" value="' +
+                    '<td><input type="text" class="mi-release-input" placeholder="now or [[YYYY_MM_DD::HH_mm]]" value="' +
                     esc(row.release_date || 'now') +
                     '" /></td>' +
                     '<td><button type="button" class="button-link-delete mi-uq-remove"><span class="dashicons dashicons-trash"></span></button></td>' +

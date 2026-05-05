@@ -53,9 +53,6 @@ class MI_Staging
         if (strtolower($v) === 'now' || preg_match('/^\[\[\s*now\s*\]\]$/iu', $v)) {
             return 'now';
         }
-        if (strtolower($v) === 'not' || preg_match('/^\[\[\s*not\s*\]\]$/iu', $v)) {
-            return 'now';
-        }
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
             return sprintf('%04d-%02d-%02d', (int) $m[1], (int) $m[2], (int) $m[3]);
         }
