@@ -47,11 +47,14 @@ if (! defined('ABSPATH')) {
             </div>
             <div class="mi-editor-side">
                 <div class="mi-side-box">
-                    <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>
-                    <label><input type="radio" name="mi-e-vis" value="public" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
-                    <label><input type="radio" name="mi-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label>
+                    <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>: <br />
+                    <label><input type="radio" name="mi-e-vis" value="draft" /> <?php esc_html_e('Draft', 'markdown-importer'); ?></label><br />
+                    <label><input type="radio" name="mi-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label><br />
+                    <label><input type="radio" name="mi-e-vis" value="publish" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
+                    <label class="mi-label" for="mi-e-password"><?php esc_html_e('Public password (optional)', 'markdown-importer'); ?></label>
+                    <input type="text" class="widefat" id="mi-e-password" />
                 </div>
-                <label class="mi-label"><?php esc_html_e('release date', 'markdown-importer'); ?></label>
+                <label class="mi-label"><?php esc_html_e('Release date', 'markdown-importer'); ?></label>
                 <input type="text" class="widefat" id="mi-e-release" placeholder="now or YYYY-MM-DD" />
                 <div class="mi-side-actions">
                     <button type="button" class="button button-primary" id="mi-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>

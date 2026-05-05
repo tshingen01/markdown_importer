@@ -9,6 +9,20 @@
         return $('<div/>').text(s == null ? '' : String(s)).html();
     }
 
+    function visibilityLabel(status, password) {
+        var s = String(status || '').toLowerCase();
+        if (s === 'private') {
+            return 'Private';
+        }
+        if (s === 'draft') {
+            return 'Draft';
+        }
+        if (s === 'publish') {
+            return password ? 'Public (password)' : 'Public';
+        }
+        return 'Private';
+    }
+
     /* ---------- Upload tab ---------- */
     function uploadTab() {
         var $root = $('#mi-upload-root');
@@ -192,6 +206,16 @@
         var $editor = $('#mi-article-editor');
         var currentId = null;
 
+        function syncPasswordField() {
+            var vis = $('input[name="mi-e-vis"]:checked').val();
+            var $pwd = $('#mi-e-password');
+            var isPublic = vis === 'publish';
+            $pwd.prop('disabled', !isPublic);
+            if (!isPublic) {
+                $pwd.val('');
+            }
+        }
+
         function loadList(term) {
             ajax('mi_list_articles', { search: term || '' }).done(function (res) {
                 if (!res.success) {
@@ -199,7 +223,11 @@
                 }
                 $tbody.empty();
                 (res.data.articles || []).forEach(function (a) {
-                    var visPublic = a.visibility !== 'private';
+                    var vis = String(a.visibility || 'private').toLowerCase();
+                    if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
+                        vis = 'private';
+                    }
+                    var visText = visibilityLabel(vis, a.password || '');
                     var tr =
                         '<tr data-id="' +
                         esc(a.id) +
@@ -214,20 +242,20 @@
                         esc(a.slug) +
                         '</td>' +
                         '<td class="mi-visibility-box">' +
-                        '<label><input type="radio" name="vis-' +
-                        esc(a.id) +
-                        '" class="mi-vis" data-pub="1" ' +
-                        (visPublic ? 'checked' : '') +
-                        '/> ' +
-                        esc('Public') +
-                        '</label> ' +
-                        '<label><input type="radio" name="vis-' +
-                        esc(a.id) +
-                        '" class="mi-vis" data-pub="0" ' +
-                        (!visPublic ? 'checked' : '') +
-                        '/> ' +
-                        esc('Private') +
-                        '</label></td>' +
+                        '<select class="mi-vis-select">' +
+                        '<option value="private" ' +
+                        (vis === 'private' ? 'selected' : '') +
+                        '>Private</option>' +
+                        '<option value="draft" ' +
+                        (vis === 'draft' ? 'selected' : '') +
+                        '>Draft</option>' +
+                        '<option value="publish" ' +
+                        (vis === 'publish' ? 'selected' : '') +
+                        '>Public</option>' +
+                        '</select> ' +
+                        '<span class="mi-vis-note">' +
+                        esc(visText) +
+                        '</span></td>' +
                         '<td>' +
                         (a.permalink
                             ? '<a href="' +
@@ -256,10 +284,12 @@
             loadList($('#mi-articles-search').val());
         });
 
-        $tbody.on('change', '.mi-vis', function () {
+        $tbody.on('change', '.mi-vis-select', function () {
             var id = $(this).closest('tr').data('id');
-            var pub = $(this).attr('data-pub') === '1';
-            ajax('mi_set_visibility', { id: id, public: pub ? 1 : 0 });
+            var status = $(this).val();
+            ajax('mi_set_visibility', { id: id, status: status }).done(function () {
+                loadList($('#mi-articles-search').val());
+            });
         });
 
         $tbody.on('click', '.mi-a-del', function () {
@@ -292,9 +322,15 @@
                 $('#mi-e-meta').val(a.meta_description);
                 $('#mi-e-md').val(a.markdown);
                 $('#mi-e-release').val(a.release_date);
-                $('input[name="mi-e-vis"][value="' + (a.visibility === 'private' ? 'private' : 'public') + '"]').prop('checked', true);
+                $('#mi-e-password').val(a.password || '');
+                $('input[name="mi-e-vis"][value="' + (a.visibility || 'private') + '"]').prop('checked', true);
+                syncPasswordField();
                 $editor.removeClass('mi-hidden');
             });
+        });
+
+        $editor.on('change', 'input[name="mi-e-vis"]', function () {
+            syncPasswordField();
         });
 
         $('#mi-e-save').on('click', function () {
@@ -310,6 +346,7 @@
                 markdown: $('#mi-e-md').val(),
                 release_date: $('#mi-e-release').val(),
                 visibility: $('input[name="mi-e-vis"]:checked').val(),
+                password: $('#mi-e-password').val(),
             }).done(function (res) {
                 if (res.success) {
                     alert(MIAdmin.i18n.saved);
@@ -551,7 +588,7 @@
                 }
                 $artBody.empty();
                 (res.data.articles || []).forEach(function (a) {
-                    var vis = a.visibility === 'private' ? 'Private' : 'Public';
+                    var vis = visibilityLabel(a.visibility, a.password || '');
                     var rd = a.release_date || '';
                     var tr =
                         '<tr>' +

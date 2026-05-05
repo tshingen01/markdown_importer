@@ -158,6 +158,11 @@
     width: 140px;
 }
 
+.mi-side-actions {
+    margin-top: 12px;
+    text-align: right;
+}
+
 .mi-visibility-box {
     white-space: nowrap;
     font-size: 12px;

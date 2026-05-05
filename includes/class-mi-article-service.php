@@ -271,15 +271,20 @@ class MI_Article_Service
         return $old;
     }
 
-    public static function set_visibility($post_id, $public)
+    public static function set_visibility($post_id, $status)
     {
-        $status = $public ? 'publish' : 'private';
-        wp_update_post(
-            [
-                'ID' => (int) $post_id,
-                'post_status' => $status,
-            ]
-        );
+        $status = (string) $status;
+        if (! in_array($status, ['publish', 'private', 'draft'], true)) {
+            $status = 'private';
+        }
+        $update = [
+            'ID' => (int) $post_id,
+            'post_status' => $status,
+        ];
+        if ($status !== 'publish') {
+            $update['post_password'] = '';
+        }
+        wp_update_post($update);
     }
 
     public static function get_article_payload($post_id)
@@ -304,14 +309,15 @@ class MI_Article_Service
             'meta_description' => $meta,
             'markdown' => $md,
             'release_date' => MI_Staging::release_for_form($rel !== '' ? $rel : 'now'),
-            'visibility' => $post->post_status === 'private' ? 'private' : 'public',
+            'visibility' => in_array($post->post_status, ['publish', 'private', 'draft'], true) ? $post->post_status : 'private',
+            'password' => (string) $post->post_password,
         ];
     }
 
     /**
      * @return true|WP_Error
      */
-    public static function save_article_from_request($post_id, $title, $keyword, $slug, $meta_description, $markdown, $release_date, $visibility)
+    public static function save_article_from_request($post_id, $title, $keyword, $slug, $meta_description, $markdown, $release_date, $visibility, $password = '')
     {
         $slug = sanitize_title($slug);
         $uniq = self::validate_article_uniqueness((int) $post_id, $keyword, $slug);
@@ -322,7 +328,11 @@ class MI_Article_Service
         $keyword = trim((string) $keyword);
         $release = MI_Staging::parse_release_input($release_date);
         $post_date = MI_Staging::post_date_from_release($release);
-        $status = $visibility === 'private' ? 'private' : 'publish';
+        $status = in_array($visibility, ['publish', 'private', 'draft'], true) ? $visibility : 'private';
+        $password = (string) $password;
+        if ($status !== 'publish') {
+            $password = '';
+        }
 
         wp_update_post(
             [
@@ -331,6 +341,7 @@ class MI_Article_Service
                 'post_name' => $slug,
                 'post_excerpt' => $meta_description,
                 'post_status' => $status,
+                'post_password' => $password,
                 'post_date' => $post_date,
                 'post_date_gmt' => get_gmt_from_date($post_date),
             ]

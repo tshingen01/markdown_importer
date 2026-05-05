@@ -299,7 +299,8 @@ class MI_Ajax
                 'keyword' => (string) get_post_meta($pid, MI_Article_Service::META_KEYWORD, true),
                 'slug' => get_post_field('post_name', $pid),
                 'permalink' => get_permalink($pid),
-                'visibility' => get_post_status($pid) === 'private' ? 'private' : 'public',
+                'visibility' => in_array(get_post_status($pid), ['publish', 'private', 'draft'], true) ? get_post_status($pid) : 'private',
+                'password' => (string) get_post_field('post_password', $pid),
                 'release_date' => MI_Staging::release_for_form((string) get_post_meta($pid, MI_Article_Service::META_RELEASE, true)),
             ];
         }
@@ -332,9 +333,10 @@ class MI_Ajax
         $meta = isset($_POST['meta_description']) ? wp_unslash($_POST['meta_description']) : '';
         $md = isset($_POST['markdown']) ? wp_unslash($_POST['markdown']) : '';
         $release = isset($_POST['release_date']) ? wp_unslash($_POST['release_date']) : 'now';
-        $vis = isset($_POST['visibility']) && $_POST['visibility'] === 'private' ? 'private' : 'public';
+        $vis = isset($_POST['visibility']) ? sanitize_key(wp_unslash($_POST['visibility'])) : 'private';
+        $pwd = isset($_POST['password']) ? sanitize_text_field(wp_unslash($_POST['password'])) : '';
 
-        $saved = MI_Article_Service::save_article_from_request($id, $title, $keyword, $slug, $meta, $md, $release, $vis);
+        $saved = MI_Article_Service::save_article_from_request($id, $title, $keyword, $slug, $meta, $md, $release, $vis, $pwd);
         if (is_wp_error($saved)) {
             wp_send_json_error(['message' => $saved->get_error_message()]);
         }
@@ -357,13 +359,13 @@ class MI_Ajax
     {
         self::auth();
         $id = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $public = isset($_POST['public']) ? (bool) $_POST['public'] : true;
+        $status = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : 'private';
         $post = get_post($id);
         if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
             wp_send_json_error(['message' => __('Article not found.', 'markdown-importer')]);
         }
-        MI_Article_Service::set_visibility($id, $public);
-        wp_send_json_success(['id' => $id, 'visibility' => $public ? 'public' : 'private']);
+        MI_Article_Service::set_visibility($id, $status);
+        wp_send_json_success(['id' => $id, 'visibility' => $status]);
     }
 
     public static function list_ctas()
