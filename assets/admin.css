@@ -11,26 +11,31 @@
 }
 
 .mi-tab-body {
-    background: #fff;
-    border: 1px solid #ccd0d4;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+    border: 1px solid #d8dde3;
     border-top: none;
-    padding: 16px 20px 24px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    border-radius: 0 0 8px 8px;
+    padding: 20px 24px 28px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
 }
 
 .mi-step-label {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
-    margin: 0 0 12px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #4a5565;
+    margin: 0 0 10px;
 }
 
 .mi-section-header {
-    background: #2e7d32;
+    background: linear-gradient(90deg, #2e7d32 0%, #2f8f3b 100%);
     color: #fff;
-    padding: 10px 14px;
+    padding: 11px 14px;
     font-weight: 600;
-    margin: 0 0 16px;
-    border-radius: 2px;
+    margin: 0 0 18px;
+    border-radius: 6px;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
 }
 
 .mi-panel {
@@ -42,16 +47,18 @@
 }
 
 .mi-dropzone {
-    border: 2px dashed #b0b0b0;
-    background: #f6f7f7;
+    border: 2px dashed #b8c3cf;
+    background: #f8fafc;
     padding: 48px 24px;
     text-align: center;
-    border-radius: 4px;
+    border-radius: 8px;
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .mi-dropzone.mi-dragover {
     border-color: #2271b1;
-    background: #f0f6fc;
+    background: #eef6ff;
+    box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.12);
 }
 
 .mi-dropzone-text {
@@ -70,10 +77,10 @@
 
 .mi-md-template {
     margin-top: 16px;
-    border: 1px solid #dcdcde;
-    border-radius: 4px;
+    border: 1px solid #d8dde3;
+    border-radius: 8px;
     background: #fff;
-    padding: 12px;
+    padding: 14px;
 }
 
 .mi-md-template h3 {
@@ -88,6 +95,9 @@
     font-size: 12px;
     line-height: 1.45;
     resize: vertical;
+    border: 1px solid #c9d2de;
+    border-radius: 6px;
+    background: #fcfdff;
 }
 
 .mi-md-template .description {
@@ -96,24 +106,130 @@
 
 .mi-toolbar {
     display: flex;
+    align-items: stretch;
     gap: 0;
-    margin-bottom: 12px;
+    margin-top: 12px;
+    margin-bottom: 14px;
+    width: 100%;
+    max-width: none;
 }
 
 .mi-search {
     flex: 1;
-    padding: 8px 12px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 12px;
     font-size: 14px;
+    border-radius: 6px 0 0 6px;
+    border-color: #c9d2de;
+    box-sizing: border-box;
+    background: #ffffff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .mi-toolbar .button {
-    height: auto;
-    padding: 4px 12px;
-    border-radius: 0 4px 4px 0;
+    margin-left: -1px;
+    border-radius: 0 6px 6px 0 !important;
+    border-color: #c9d2de;
+    box-shadow: none;
+    background: linear-gradient(180deg, #f9fbfd 0%, #f1f5f9 100%);
+    color: #3e5872;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+#mi-queue-search-btn,
+#mi-articles-search-btn,
+#mi-cta-search-btn,
+#mi-upgrade-search-btn {
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+}
+
+#mi-queue-search-btn .dashicons,
+#mi-articles-search-btn .dashicons,
+#mi-cta-search-btn .dashicons,
+#mi-upgrade-search-btn .dashicons {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    line-height: 17px;
+}
+
+.mi-toolbar .button:hover {
+    border-color: #2271b1 !important;
+    background: #eef6ff !important;
+    color: #0a4b78 !important;
+}
+
+.mi-toolbar .button:focus {
+    outline: none;
+    border-color: #2271b1 !important;
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.18) !important;
+}
+
+.mi-toolbar:focus-within .mi-search {
+    border-color: #2271b1;
+}
+
+.mi-toolbar:focus-within .button {
+    border-color: #2271b1;
+}
+
+.mi-wrap .button,
+.mi-wrap .button-primary,
+.mi-wrap .button-secondary {
+    border-radius: 8px;
+    min-height: 34px;
+    padding: 6px 14px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.mi-wrap .button:hover,
+.mi-wrap .button-secondary:hover {
+    border-color: #2271b1;
+    color: #0a4b78;
+    background: #f3f8ff;
+}
+
+.mi-wrap .button:focus,
+.mi-wrap .button-primary:focus,
+.mi-wrap .button-secondary:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.22);
+}
+
+.mi-wrap .button-primary {
+    background: linear-gradient(180deg, #2271b1 0%, #135e96 100%);
+    border-color: #135e96;
+}
+
+.mi-wrap .button-primary:hover {
+    background: linear-gradient(180deg, #2a7ebf 0%, #176ba9 100%);
+    border-color: #176ba9;
 }
 
 .mi-table {
     margin-top: 8px;
+    border: 1px solid #dde3ea;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mi-table th {
+    background: #f6f8fb;
+    color: #374151;
+    font-weight: 600;
+}
+
+.mi-table td,
+.mi-table th {
+    padding: 10px 12px;
+}
+
+.mi-table.widefat.striped > tbody > :nth-child(odd) {
+    background-color: #fcfdff;
 }
 
 .mi-table .mi-error {
@@ -127,20 +243,98 @@
 }
 
 .mi-btn-confirm {
-    background: #2e7d32 !important;
-    border-color: #1b5e20 !important;
+    background: linear-gradient(180deg, #2f8f3b 0%, #2a7d34 100%) !important;
+    border-color: #1f6228 !important;
     color: #fff !important;
-    padding: 6px 18px !important;
+    padding: 7px 18px !important;
     height: auto !important;
+    border-radius: 6px !important;
+}
+
+.mi-btn-confirm:hover {
+    background: linear-gradient(180deg, #36a144 0%, #2f8f3b 100%) !important;
+    border-color: #1f6228 !important;
+    color: #fff !important;
 }
 
 .mi-btn-danger {
     color: #b32d2e !important;
     border-color: #dba617 !important;
+    border-radius: 6px !important;
+    background: #fff7f7 !important;
+}
+
+.mi-btn-danger:hover {
+    background: #ffeef0 !important;
+    border-color: #b32d2e !important;
+    color: #8e1e21 !important;
 }
 
 .mi-inline-actions button {
     margin-right: 4px;
+}
+
+.mi-inline-actions .button,
+.mi-inline-actions .button-link-delete,
+.mi-table .button-link-delete,
+.mi-table .button-link {
+    border-radius: 6px;
+    min-height: 30px;
+    padding: 4px 8px;
+}
+
+.mi-table .button-link-delete:hover {
+    color: #8e1e21;
+}
+
+/* Icon-only action buttons */
+.mi-inline-actions .button-link-delete,
+.mi-table .mi-a-edit,
+.mi-table .mi-a-del,
+.mi-table .button[title="Upgrade tab"] {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    line-height: 1;
+}
+
+.mi-inline-actions .button-link-delete .dashicons,
+.mi-table .mi-a-edit .dashicons,
+.mi-table .mi-a-del .dashicons,
+.mi-table .button[title="Upgrade tab"] .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+}
+
+.mi-table .mi-a-edit {
+    border-color: #c9d2de;
+    background: #f8fbff;
+}
+
+.mi-table .mi-a-edit:hover {
+    border-color: #2271b1;
+    background: #edf6ff;
+    color: #0a4b78;
+}
+
+.mi-table .mi-a-del {
+    border-color: #e7c6c8;
+    background: #fff7f7;
+    color: #b32d2e;
+}
+
+.mi-table .mi-a-del:hover {
+    border-color: #b32d2e;
+    background: #ffeef0;
+    color: #8e1e21;
 }
 
 .mi-preview-link {
@@ -155,7 +349,7 @@
 }
 
 .mi-release-input {
-    width: 140px;
+    width: 170px;
 }
 
 .mi-side-actions {
@@ -164,17 +358,28 @@
 }
 
 .mi-visibility-box {
-    white-space: nowrap;
     font-size: 12px;
+    line-height: 1.5;
 }
 
-.mi-visibility-box label {
-    display: inline-block;
+.mi-vis-select {
+    min-width: 94px;
+    border-color: #c9d2de;
+    border-radius: 6px;
     margin-right: 6px;
 }
 
+.mi-vis-note {
+    color: #5b6573;
+    font-size: 11px;
+}
+
 .mi-article-editor {
-    margin-top: 16px;
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid #dde3ea;
+    border-radius: 8px;
+    background: #fff;
 }
 
 .mi-editor-grid {
@@ -197,6 +402,7 @@
     display: block;
     font-weight: 600;
     margin: 12px 0 6px;
+    color: #2c3a4b;
 }
 
 .mi-code {
@@ -205,10 +411,16 @@
 }
 
 .mi-side-box {
-    border: 1px solid #dcdcde;
-    padding: 10px;
+    border: 1px solid #d9e1ea;
+    padding: 12px;
     margin-bottom: 12px;
-    background: #f6f7f7;
+    background: #f7f9fc;
+    border-radius: 8px;
+}
+
+.mi-side-box label {
+    display: inline-block;
+    margin-top: 6px;
 }
 
 .mi-cta-layout {
@@ -248,7 +460,8 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    border: 1px solid #dcdcde;
+    border: 1px solid #d8dde3;
+    border-radius: 8px;
     max-height: 420px;
     overflow: auto;
 }
@@ -261,17 +474,69 @@
     border-bottom: 1px solid #eee;
 }
 
+.mi-cta-list li > span:last-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mi-cta-list .mi-cta-pick,
+.mi-cta-list .mi-cta-del {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    border: 1px solid #c9d2de;
+    background: #f8fbff;
+}
+
+.mi-cta-list .mi-cta-pick .dashicons,
+.mi-cta-list .mi-cta-del .dashicons {
+    width: 15px;
+    height: 15px;
+    font-size: 15px;
+    line-height: 15px;
+}
+
+.mi-cta-list .mi-cta-pick:hover {
+    border-color: #2271b1;
+    background: #edf6ff;
+    color: #0a4b78;
+}
+
+.mi-cta-list .mi-cta-del {
+    border-color: #e7c6c8;
+    background: #fff7f7;
+    color: #b32d2e;
+}
+
+.mi-cta-list .mi-cta-del:hover {
+    border-color: #b32d2e;
+    background: #ffeef0;
+    color: #8e1e21;
+}
+
 .mi-cta-list li:last-child {
     border-bottom: none;
 }
 
 .mi-cta-list li.mi-active {
-    background: #f0f6fc;
+    background: #eef6ff;
 }
 
 .mi-cta-add-row {
     text-align: right;
     margin-top: 12px;
+}
+
+#mi-cta-root .mi-toolbar #mi-cta-search-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.2);
 }
 
 .mi-cta-actions .button {
@@ -283,8 +548,8 @@
 }
 
 .mi-cta-preview-wrap {
-    border: 1px solid #dcdcde;
-    border-radius: 4px;
+    border: 1px solid #d8dde3;
+    border-radius: 8px;
     background: #fff;
     overflow: hidden;
     min-height: 120px;
@@ -300,8 +565,8 @@
 
 #mi-cta-editor .CodeMirror {
     height: 360px;
-    border: 1px solid #dcdcde;
-    border-radius: 4px;
+    border: 1px solid #d8dde3;
+    border-radius: 8px;
     background: #ffffff;
     color: #1d2327;
     font-size: 13px;
@@ -333,8 +598,14 @@
     .mi-cta-layout {
         flex-direction: column;
     }
+    .mi-tab-body {
+        padding: 16px;
+    }
     .mi-editor-side,
     .mi-cta-list-wrap {
+        width: 100%;
+    }
+    .mi-release-input {
         width: 100%;
     }
 }

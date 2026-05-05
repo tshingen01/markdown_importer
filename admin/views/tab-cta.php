@@ -20,11 +20,12 @@ if (! defined('ABSPATH')) {
             </div>
 
             <p class="mi-cta-actions">
-                <button type="button" class="button button-primary" id="mi-cta-save"><?php esc_html_e('save', 'markdown-importer'); ?></button>
+                <button type="button" class="button button-primary" id="mi-cta-save"><?php esc_html_e('Save', 'markdown-importer'); ?></button>
                 <button type="button" class="button mi-hidden" id="mi-cta-cancel"><?php esc_html_e('Cancel', 'markdown-importer'); ?></button>
             </p>
         </div>
         <div class="mi-cta-list-wrap">
+            <label class="mi-label"><?php esc_html_e('CTA Buttons List', 'markdown-importer'); ?></label>
             <div class="mi-toolbar">
                 <input type="search" id="mi-cta-search" class="mi-search" placeholder="<?php esc_attr_e('Search…', 'markdown-importer'); ?>" />
                 <button type="button" class="button" id="mi-cta-search-btn"><span class="dashicons dashicons-search"></span></button>
