@@ -35,7 +35,7 @@ class MI_Staging
     public static function release_for_form($normalized)
     {
         $n = (string) $normalized;
-        if (strtolower($n) === 'now' || $n === 'not') {
+        if (strtolower($n) === 'now') {
             return 'now';
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $n)) {
@@ -67,7 +67,7 @@ class MI_Staging
     {
         $raw = (string) $normalized;
         $low = strtolower($raw);
-        if ($low === 'now' || $low === 'not') {
+        if ($low === 'now') {
             return current_time('mysql');
         }
         $tz = wp_timezone();

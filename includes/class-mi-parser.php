@@ -25,8 +25,8 @@ class MI_Parser
         $content = str_replace(["\r\n", "\r"], "\n", $content);
         $lines = explode("\n", $content);
 
-        if (count($lines) < 5) {
-            return ['ok' => false, 'error' => __('File must have at least 5 lines (metadata + markdown start).', 'markdown-importer')];
+        if (count($lines) < 7) {
+            return ['ok' => false, 'error' => __('File must have at least 7 lines (release/meta/slug/title + markdown).', 'markdown-importer')];
         }
 
         $line1 = trim($lines[0]);
@@ -40,15 +40,15 @@ class MI_Parser
         $title = trim($lines[6]);
 
         if ($slug === '' || $title === '') {
-            return ['ok' => false, 'error' => __('Line 3 (slug) and line 4 (title) must not be empty.', 'markdown-importer')];
+            return ['ok' => false, 'error' => __('Line 5 (slug) and line 7 (title) must not be empty.', 'markdown-importer')];
         }
 
         $slug = sanitize_title($slug);
         if ($slug === '') {
-            return ['ok' => false, 'error' => __('Invalid URL slug on line 3.', 'markdown-importer')];
+            return ['ok' => false, 'error' => __('Invalid URL slug on line 5.', 'markdown-importer')];
         }
 
-        $markdown = implode("\n", array_slice($lines, 6));
+        $markdown = implode("\n", array_slice($lines, 7));
         $keyword = $filename_for_keyword !== '' ? self::keyword_from_filename($filename_for_keyword) : '';
 
         return [

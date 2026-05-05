@@ -6,10 +6,18 @@ if (! defined('ABSPATH')) {
 
 class MI_Renderer
 {
+    private static function is_target_singular()
+    {
+        if (! is_singular()) {
+            return false;
+        }
+        $post = get_queried_object();
+        return $post instanceof WP_Post && $post->post_type === MI_Post_Type::POST_TYPE;
+    }
+
     public static function head_meta()
     {
-        $post_type = get_post_type();
-        if (! is_singular($post_type)) {
+        if (! self::is_target_singular()) {
             return;
         }
         $post = get_post();
@@ -24,8 +32,7 @@ class MI_Renderer
 
     public static function filter_content($content)
     {
-        $post_type = get_post_type();
-        if (! is_singular($post_type)) {
+        if (! self::is_target_singular()) {
             return $content;
         }
         $post = get_post();
@@ -52,7 +59,35 @@ class MI_Renderer
         $p = new Parsedown();
         $p->setSafeMode(false);
         $inner = $p->text($work);
+        $inner = wp_kses(self::sanitize_output_html($inner), self::allowed_html());
         return '<div class="mi-article-content">' . $inner . '</div>';
+    }
+
+    private static function sanitize_output_html($html)
+    {
+        // Remove dangerous content blocks before allowlist sanitization.
+        $html = preg_replace('#<script\b[^>]*>.*?</script>#is', '', (string) $html);
+        $html = preg_replace('#<style\b[^>]*>.*?</style>#is', '', (string) $html);
+        return (string) $html;
+    }
+
+    private static function allowed_html()
+    {
+        $allowed = wp_kses_allowed_html('post');
+        if (! isset($allowed['img'])) {
+            $allowed['img'] = [];
+        }
+        $allowed['img']['class'] = true;
+        $allowed['img']['loading'] = true;
+        if (! isset($allowed['a'])) {
+            $allowed['a'] = [];
+        }
+        $allowed['a']['class'] = true;
+        if (! isset($allowed['span'])) {
+            $allowed['span'] = [];
+        }
+        $allowed['span']['class'] = true;
+        return $allowed;
     }
 
     private static function replace_image_tags($text, $post_id)
@@ -122,7 +157,7 @@ class MI_Renderer
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
-                return $cta['code'];
+                return wp_kses(self::sanitize_output_html($cta['code']), self::allowed_html());
             },
             $text
         );
@@ -133,10 +168,9 @@ class MI_Renderer
      */
     private static function replace_article_keyword_links($text, $current_post_id)
     {
-        $post_type = get_post_type();
         return preg_replace_callback(
             '/\[\[([^:\[\]]+)\]\]/u',
-            function ($m) use ($current_post_id, $post_type) {
+            function ($m) use ($current_post_id) {
                 $key = trim($m[1]);
                 if ($key === '') {
                     return $m[0];
@@ -146,7 +180,7 @@ class MI_Renderer
                     return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
                 }
                 $post = get_post($pid);
-                if (! $post || $post->post_type !== $post_type) {
+                if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
                     return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
                 }
                 if ($post->post_status === 'private' && ! current_user_can('read_post', $pid)) {
@@ -167,8 +201,7 @@ class MI_Renderer
      */
     public static function template_redirect_private_article()
     {
-        $post_type = get_post_type();
-        if (! is_singular($post_type)) {
+        if (! self::is_target_singular()) {
             return;
         }
         $post = get_queried_object();
