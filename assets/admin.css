@@ -542,6 +542,12 @@
     background: #eef6ff;
 }
 
+.mi-cta-list li.mi-empty-row {
+    justify-content: center;
+    color: #64748b;
+    font-style: italic;
+}
+
 .mi-cta-add-row {
     text-align: right;
     margin-top: 12px;

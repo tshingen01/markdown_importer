@@ -39,6 +39,10 @@ class MI_Renderer
         if (! $post) {
             return $content;
         }
+        // Respect native WP password protection flow.
+        if (post_password_required($post)) {
+            return $content !== '' ? $content : get_the_password_form($post);
+        }
         $md = get_post_meta($post->ID, '_mi_markdown', true);
         if (! is_string($md) || $md === '') {
             return $content;
@@ -67,9 +71,8 @@ class MI_Renderer
 
     private static function sanitize_output_html($html)
     {
-        // Remove dangerous content blocks before allowlist sanitization.
+        // Remove dangerous script blocks before allowlist sanitization.
         $html = preg_replace('#<script\b[^>]*>.*?</script>#is', '', (string) $html);
-        $html = preg_replace('#<style\b[^>]*>.*?</style>#is', '', (string) $html);
         return (string) $html;
     }
 
@@ -91,6 +94,11 @@ class MI_Renderer
             $allowed['span'] = [];
         }
         $allowed['span']['class'] = true;
+        if (! isset($allowed['style'])) {
+            $allowed['style'] = [];
+        }
+        $allowed['style']['type'] = true;
+        $allowed['style']['media'] = true;
         return $allowed;
     }
 
@@ -161,6 +169,7 @@ class MI_Renderer
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
+                // var_dump($cta['code']);
                 return wp_kses(self::sanitize_output_html($cta['code']), self::allowed_html());
             },
             $text
@@ -195,6 +204,38 @@ class MI_Renderer
                 $title = get_the_title($pid);
                 $label = $title !== '' ? $title : $key;
                 return self::build_link_html($url, $label, $raw_target);
+            },
+            $text
+        );
+    }
+
+    /**
+     * [[Keyword]] -> link to the matching mi_article.
+     */
+    private static function replace_article_keyword_links($text, $current_post_id)
+    {
+        return preg_replace_callback(
+            '/\[\[([^:\[\]]+)\]\]/u',
+            function ($m) use ($current_post_id) {
+                $key = trim($m[1]);
+                if ($key === '') {
+                    return $m[0];
+                }
+                $pid = MI_Article_Service::find_post_id_by_keyword($key, 0);
+                if ($pid <= 0) {
+                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
+                }
+                $post = get_post($pid);
+                if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
+                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
+                }
+                if ($post->post_status === 'private' && ! current_user_can('read_post', $pid)) {
+                    return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
+                }
+                $url = get_permalink($pid);
+                $title = get_the_title($pid);
+                $label = $title !== '' ? $title : $key;
+                return '<a href="' . esc_url($url) . '" class="mi-article-link">' . esc_html($label) . '</a>';
             },
             $text
         );

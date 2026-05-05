@@ -9,6 +9,10 @@
         return $('<div/>').text(s == null ? '' : String(s)).html();
     }
 
+    function renderEmptyTableRow($tbody, colspan, message) {
+        $tbody.html('<tr class="mi-empty-row"><td colspan="' + colspan + '">' + esc(message) + '</td></tr>');
+    }
+
     function releaseToToken(release) {
         var v = $.trim(String(release || 'now'));
         if (!v || v.toLowerCase() === 'now') {
@@ -334,7 +338,12 @@
                     return;
                 }
                 $tbody.empty();
-                (res.data.articles || []).forEach(function (a) {
+                var rows = res.data.articles || [];
+                if (!rows.length) {
+                    renderEmptyTableRow($tbody, 6, 'No articles found.');
+                    return;
+                }
+                rows.forEach(function (a) {
                     var vis = String(a.visibility || 'private').toLowerCase();
                     if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
                         vis = 'private';
@@ -497,6 +506,7 @@
         function renderList(filter) {
             $list.empty();
             var q = (filter || '').toLowerCase();
+            var shown = 0;
             allCt.forEach(function (c) {
                 if (q && String(c.name).toLowerCase().indexOf(q) === -1) {
                     return;
@@ -509,7 +519,11 @@
                     '</span><span><button type="button" class="button-link mi-cta-pick"><span class="dashicons dashicons-edit"></span></button> ' +
                     '<button type="button" class="button-link-delete mi-cta-del"><span class="dashicons dashicons-trash"></span></button></span></li>';
                 $list.append(li);
+                shown++;
             });
+            if (!shown) {
+                $list.append('<li class="mi-empty-row"><span>No CTA buttons found.</span></li>');
+            }
         }
 
         function fetchCtas() {
@@ -711,7 +725,12 @@
                     return;
                 }
                 $artBody.empty();
-                (res.data.articles || []).forEach(function (a) {
+                var rows = res.data.articles || [];
+                if (!rows.length) {
+                    renderEmptyTableRow($artBody, 5, 'No articles found.');
+                    return;
+                }
+                rows.forEach(function (a) {
                     var vis = visibilityLabel(a.visibility, a.password || '');
                     var rd = a.release_date || '';
                     var tr =
