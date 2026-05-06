@@ -52,33 +52,6 @@ class MI_Article_Service
     }
 
     /**
-     * Find published (online) mi_article by keyword (case-insensitive).
-     */
-    public static function find_published_post_id_by_keyword($keyword, $exclude_post_id = 0)
-    {
-        global $wpdb;
-        $keyword = trim((string) $keyword);
-        if ($keyword === '') {
-            return 0;
-        }
-        $kw_lower = strtolower($keyword);
-        $meta_key = self::META_KEYWORD;
-        $ptype = MI_Post_Type::POST_TYPE;
-        $sql = "SELECT p.ID FROM {$wpdb->posts} p
-                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
-                WHERE p.post_type = %s AND p.post_status = 'publish'
-                AND LOWER(TRIM(pm.meta_value)) = %s";
-        $params = [$meta_key, $ptype, $kw_lower];
-        if ((int) $exclude_post_id > 0) {
-            $sql .= ' AND p.ID != %d';
-            $params[] = (int) $exclude_post_id;
-        }
-        $sql .= ' LIMIT 1';
-        $pid = $wpdb->get_var($wpdb->prepare($sql, $params));
-        return $pid ? (int) $pid : 0;
-    }
-
-    /**
      * Find another mi_article using the same URL slug, optionally excluding one post.
      */
     public static function find_post_id_by_slug($slug, $exclude_post_id = 0)

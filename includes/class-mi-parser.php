@@ -86,7 +86,7 @@ class MI_Parser
             return ['raw' => $line, 'normalized' => 'now'];
         }
 
-        if (preg_match('/^(\d{4})[ _-](\d{2})[ _-](\d{2})::(\d{2})[ _-](\d{2})$/u', $inner, $d)) {
+        if (preg_match('/^(\d{4})[ _-](\d{2})[ _-](\d{2})::(\d{2})[: _-](\d{2})$/u', $inner, $d)) {
             $y = (int) $d[1];
             $mo = (int) $d[2];
             $day = (int) $d[3];

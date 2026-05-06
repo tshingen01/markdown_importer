@@ -461,7 +461,7 @@ class MI_Ajax
                 continue;
             }
 
-            $target = MI_Article_Service::find_published_post_id_by_keyword($parsed['keyword']);
+            $target = MI_Article_Service::find_post_id_by_keyword($parsed['keyword']);
             if ($target <= 0) {
                 $queue[] = [
                     'id' => MI_Staging::make_item_id(),
@@ -477,7 +477,7 @@ class MI_Ajax
                     'release_date' => MI_Staging::release_for_form((string) $parsed['release_normalized']),
                     'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
                     'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
-                    'error' => __('No published article matches this keyword (filename base).', 'markdown-importer'),
+                    'error' => __('No article matches this keyword (filename base).', 'markdown-importer'),
                 ];
                 continue;
             }

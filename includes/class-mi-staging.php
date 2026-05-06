@@ -30,7 +30,7 @@ class MI_Staging
     }
 
     /**
-     * Serialize release for admin fields as "YYYY-MM-DD HH:MM" or "now".
+     * Serialize release for admin fields as "YYYY-MM-DD HH:MM" or "now" (from [[now]] in .md).
      * Parser input may come from .md syntax like [[YYYY_MM_DD::HH_MM]], but we store as "YYYY-MM-DD HH:MM".
      */
     public static function release_for_form($normalized)
@@ -40,6 +40,9 @@ class MI_Staging
             return 'now';
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/', $n)) {
+            return $n;
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $n)) {
             return $n;
         }
         return 'now';
@@ -54,7 +57,7 @@ class MI_Staging
         if (strtolower($v) === 'now' || preg_match('/^\[\[\s*now\s*\]\]$/iu', $v)) {
             return 'now';
         }
-        if (preg_match('/^(\d{4})[ _-](\d{2})[ _-](\d{2})::(\d{2})[ _-](\d{2})$/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        if (preg_match('/^(\d{4})[ _-](\d{2})[ _-](\d{2})::(\d{2})[: _-](\d{2})$/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
             $h = (int) $m[4];
             $mi = (int) $m[5];
             if ($h >= 0 && $h <= 23 && $mi >= 0 && $mi <= 59) {
