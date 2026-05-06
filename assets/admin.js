@@ -19,14 +19,19 @@
     }
 
     function buildValidationCsv(rows) {
-        var out = ['"filename","release_date","visibility","url_slug","errors"'];
+        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","url_slug","url_slug_status","errors"'];
         (rows || []).forEach(function (row) {
             out.push(
                 [
                     csvEscape(row.filename || ''),
+                    csvEscape(row.keyword || ''),
+                    csvEscape(row.keyword_status || ''),
                     csvEscape(row.release_date || ''),
+                    csvEscape(row.release_status || ''),
                     csvEscape(row.visibility || ''),
+                    csvEscape(row.visibility_status || ''),
                     csvEscape(row.slug || ''),
+                    csvEscape(row.slug_status || ''),
                     csvEscape((row.errors || []).join(' | ')),
                 ].join(',')
             );

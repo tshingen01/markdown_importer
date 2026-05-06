@@ -34,7 +34,7 @@ How to Invest in Bitcoin
 Intro text...
 
 [[image::ALT-ATTRIBUTE::xxx.png]]
-[[Bitcoin::self]]
+[[Bitcoin::Bitcoin::self]]
 [[https://google.com::Google::blank]]
 [[CTA::START]]
             </textarea>

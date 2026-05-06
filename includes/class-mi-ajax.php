@@ -130,22 +130,72 @@ class MI_Ajax
             if ($content === false) {
                 $invalid_files[] = [
                     'filename' => $name,
+                    'keyword' => '',
+                    'keyword_status' => '',
                     'release_date' => '',
                     'visibility' => '',
                     'slug' => '',
+                    'slug_status' => '',
                     'errors' => [__('Could not read file.', 'markdown-importer')],
                 ];
                 continue;
             }
 
             $validation = MI_Parser::validate_document($content);
+            $keyword = MI_Parser::keyword_from_filename($name);
             if (! $validation['ok']) {
                 $invalid_files[] = [
                     'filename' => $name,
-                    'release_date' => isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : '',
+                    'keyword' => $keyword,
+                    'keyword_status' => '',
+                    'release_date' => isset($validation['release_raw']) && (string) $validation['release_raw'] !== '' ? (string) $validation['release_raw'] : (isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : ''),
+                    'release_status' => isset($validation['release_error']) ? (string) $validation['release_error'] : '',
                     'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : '',
-                    'slug' => isset($validation['slug']) ? (string) $validation['slug'] : '',
+                    'visibility_status' => isset($validation['visibility_error']) ? (string) $validation['visibility_error'] : '',
+                    'slug' => isset($validation['slug_raw']) && (string) $validation['slug_raw'] !== '' ? (string) $validation['slug_raw'] : (isset($validation['slug']) ? (string) $validation['slug'] : ''),
+                    'slug_status' => isset($validation['slug_error']) ? (string) $validation['slug_error'] : '',
                     'errors' => isset($validation['errors']) && is_array($validation['errors']) ? array_values(array_map('strval', $validation['errors'])) : [__('Invalid markdown file.', 'markdown-importer')],
+                ];
+                continue;
+            }
+
+            $slug = isset($validation['slug']) ? (string) $validation['slug'] : '';
+            $keyword_status = __('OK', 'markdown-importer');
+            $slug_status = __('OK', 'markdown-importer');
+            $errors = [];
+
+            $keyword_post_id = MI_Article_Service::find_post_id_by_keyword($keyword, 0);
+            if ($keyword_post_id > 0) {
+                $keyword_status = sprintf(
+                    /* translators: %d: post ID */
+                    __('Already exists (post ID: %d).', 'markdown-importer'),
+                    (int) $keyword_post_id
+                );
+                $errors[] = __('This keyword is already used by another article.', 'markdown-importer');
+            }
+
+            $slug_post_id = MI_Article_Service::find_post_id_by_slug($slug, 0);
+            if ($slug_post_id > 0) {
+                $slug_status = sprintf(
+                    /* translators: %d: post ID */
+                    __('Already exists (post ID: %d).', 'markdown-importer'),
+                    (int) $slug_post_id
+                );
+                $errors[] = __('This URL slug is already used by another article.', 'markdown-importer');
+            }
+
+            if ($errors !== []) {
+                $invalid_files[] = [
+                    'filename' => $name,
+                    'keyword' => $keyword,
+                    'keyword_status' => $keyword_status,
+                    'release_date' => isset($validation['release_raw']) && (string) $validation['release_raw'] !== '' ? (string) $validation['release_raw'] : (isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : ''),
+                    'release_status' => isset($validation['release_error']) ? (string) $validation['release_error'] : '',
+                    'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : '',
+                    'visibility_status' => isset($validation['visibility_error']) ? (string) $validation['visibility_error'] : '',
+                    'slug' => isset($validation['slug_raw']) && (string) $validation['slug_raw'] !== '' ? (string) $validation['slug_raw'] : $slug,
+                    'slug_status' => $slug_status,
+                    'errors' => $errors,
                 ];
                 continue;
             }
@@ -156,8 +206,8 @@ class MI_Ajax
                 'batch' => $batch,
                 'filename' => $name,
                 'files_dir' => $dir,
-                'keyword' => MI_Parser::keyword_from_filename($name),
-                'slug' => $validation['slug'],
+                'keyword' => $keyword,
+                'slug' => $slug,
                 'title' => $validation['title'],
                 'meta_description' => $validation['meta_description'],
                 'markdown' => $validation['markdown'],
@@ -524,9 +574,12 @@ class MI_Ajax
             if (! $validation['ok']) {
                 $invalid_files[] = [
                     'filename' => $name,
-                    'release_date' => isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : '',
+                    'release_date' => isset($validation['release_raw']) && (string) $validation['release_raw'] !== '' ? (string) $validation['release_raw'] : (isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : ''),
+                    'release_status' => isset($validation['release_error']) ? (string) $validation['release_error'] : '',
                     'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : '',
-                    'slug' => isset($validation['slug']) ? (string) $validation['slug'] : '',
+                    'visibility_status' => isset($validation['visibility_error']) ? (string) $validation['visibility_error'] : '',
+                    'slug' => isset($validation['slug_raw']) && (string) $validation['slug_raw'] !== '' ? (string) $validation['slug_raw'] : (isset($validation['slug']) ? (string) $validation['slug'] : ''),
+                    'slug_status' => isset($validation['slug_error']) ? (string) $validation['slug_error'] : '',
                     'errors' => isset($validation['errors']) && is_array($validation['errors']) ? array_values(array_map('strval', $validation['errors'])) : [__('Invalid markdown file.', 'markdown-importer')],
                 ];
                 continue;

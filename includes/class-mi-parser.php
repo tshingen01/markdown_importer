@@ -12,9 +12,13 @@ class MI_Parser
      * @return array{
      *   ok:bool,
      *   errors:array<int,string>,
+     *   release_error:string,
+     *   visibility_error:string,
+     *   slug_error:string,
      *   release_raw:string,
      *   release_normalized:string,
      *   visibility:string,
+     *   slug_raw:string,
      *   password:string,
      *   meta_description:string,
      *   slug:string,
@@ -29,22 +33,27 @@ class MI_Parser
         $errors = [];
 
         if (count($lines) < 11) {
-            $errors[] = __('File must have at least 11 lines (release/visibility/meta/slug/title + markdown).', 'markdown-importer');
+            $errors[] = __('File must have at least lines (release, visibility, meta, slug, title + markdown).', 'markdown-importer');
         }
 
         $release_raw = '';
         $release_normalized = 'now';
+        $release_error = '';
         $visibility_status = 'private';
         $visibility_password = '';
+        $visibility_error = '';
         $meta_description = trim(isset($lines[4]) ? (string) $lines[4] : '');
         $slug_line = trim(isset($lines[6]) ? (string) $lines[6] : '');
+        $slug_error = '';
         $title = trim(isset($lines[8]) ? (string) $lines[8] : '');
         $markdown = implode("\n", array_slice($lines, 10));
 
         $line1 = trim(isset($lines[0]) ? (string) $lines[0] : '');
         $release = self::parse_release_line($line1);
-        if ($release === null) {
-            $errors[] = __('Line 1 (release date) must be [[YYYY_MM_DD::HH_MM]] or [[now]].', 'markdown-importer');
+        if (! $release['valid']) {
+            $release_raw = $release['raw'];
+            $release_error = __('Invalid syntax.', 'markdown-importer');
+            $errors[] = __('Release date line must be [[YYYY_MM_DD::HH_MM]] or [[now]].', 'markdown-importer') . ' ' . $release_error;
         } else {
             $release_raw = $release['raw'];
             $release_normalized = $release['normalized'];
@@ -52,31 +61,40 @@ class MI_Parser
 
         $line3 = trim(isset($lines[2]) ? (string) $lines[2] : '');
         $visibility = self::parse_visibility_line($line3);
-        if ($visibility === null) {
-            $errors[] = __('Line 3 (visibility) must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer');
+        if (! $visibility['valid']) {
+            $visibility_status = $visibility['status'];
+            $visibility_error = __('Invalid syntax.', 'markdown-importer');
+            $errors[] = __('Visibility line must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer') . ' ' . $visibility_error;
         } else {
             $visibility_status = $visibility['status'];
             $visibility_password = $visibility['password'];
         }
 
         if ($slug_line === '') {
-            $errors[] = __('Line 7 (URL slug) must not be empty.', 'markdown-importer');
+            $slug_error = __('Empty URL slug is not allowed.', 'markdown-importer');
+            $errors[] = __('URL slug line cannot be empty.', 'markdown-importer');
         }
         if ($title === '') {
-            $errors[] = __('Line 9 (title) must not be empty.', 'markdown-importer');
+            $errors[] = __('Title line cannot be empty.', 'markdown-importer');
         }
 
         $sanitized_slug = sanitize_title($slug_line);
-        if ($slug_line !== '' && $sanitized_slug === '') {
-            $errors[] = __('Line 7 (URL slug) is invalid.', 'markdown-importer');
+
+        if ($slug_line !== '' && ! preg_match('/^[A-Za-z0-9-]+$/', $slug_line)) {
+            $slug_error = __('Invalid syntax.', 'markdown-importer');
+            $errors[] = __('URL slug line contains disallowed characters. Only a-z, 0-9, and hyphen (-) are allowed.', 'markdown-importer') . ' ' . $slug_error;
         }
 
         return [
             'ok' => $errors === [],
             'errors' => $errors,
+            'release_error' => $release_error,
+            'visibility_error' => $visibility_error,
+            'slug_error' => $slug_error,
             'release_raw' => $release_raw,
             'release_normalized' => $release_normalized,
             'visibility' => $visibility_status,
+            'slug_raw' => $slug_line,
             'password' => $visibility_password,
             'meta_description' => $meta_description,
             'slug' => $sanitized_slug,
@@ -126,19 +144,19 @@ class MI_Parser
     }
 
     /**
-     * @return array{raw:string,normalized:string}|null
+     * @return array{valid:bool,raw:string,normalized:string}
      */
     private static function parse_release_line($line)
     {
-        $line = trim($line);
-        if (! preg_match('/^\[\[(.+)\]\]$/u', $line, $m)) {
-            return null;
+        $original = trim((string) $line);
+        if (! preg_match('/^\[\[(.+)\]\]$/u', $original, $m)) {
+            return ['valid' => false, 'raw' => $original, 'normalized' => ''];
         }
 
         $inner = trim($m[1]);
         $lower = strtolower($inner);
         if ($lower === 'now') {
-            return ['raw' => $line, 'normalized' => 'now'];
+            return ['valid' => true, 'raw' => $original, 'normalized' => 'now'];
         }
 
         if (preg_match('/^(\d{4})[ _-](\d{2})[ _-](\d{2})::(\d{2})[: _-](\d{2})$/u', $inner, $d)) {
@@ -148,41 +166,42 @@ class MI_Parser
             $h = (int) $d[4];
             $mi = (int) $d[5];
             if (! checkdate($mo, $day, $y)) {
-                return null;
+                return ['valid' => false, 'raw' => $original, 'normalized' => ''];
             }
             if ($h < 0 || $h > 23 || $mi < 0 || $mi > 59) {
-                return null;
+                return ['valid' => false, 'raw' => $original, 'normalized' => ''];
             }
             $ymdhm = sprintf('%04d-%02d-%02d %02d:%02d', $y, $mo, $day, $h, $mi);
-            return ['raw' => $line, 'normalized' => $ymdhm];
+            return ['valid' => true, 'raw' => $original, 'normalized' => $ymdhm];
         }
 
-        return null;
+        return ['valid' => false, 'raw' => $original, 'normalized' => ''];
     }
 
     /**
-     * @return array{status:string,password:string}|null
+     * @return array{valid:bool,raw:string,status:string,password:string}
      */
     private static function parse_visibility_line($line)
     {
-        if (! preg_match('/^\[\[(.+)\]\]$/u', trim($line), $m)) {
-            return null;
+        $original = trim((string) $line);
+        if (! preg_match('/^\[\[(.+)\]\]$/u', $original, $m)) {
+            return ['valid' => false, 'raw' => $original, 'status' => '', 'password' => ''];
         }
         $inner = trim($m[1]);
         $upper = strtoupper($inner);
         if ($upper === 'PRIVATE') {
-            return ['status' => 'private', 'password' => ''];
+            return ['valid' => true, 'raw' => $original, 'status' => 'private', 'password' => ''];
         }
         if ($upper === 'DRAFT') {
-            return ['status' => 'draft', 'password' => ''];
+            return ['valid' => true, 'raw' => $original, 'status' => 'draft', 'password' => ''];
         }
         if ($upper === 'PUBLIC') {
-            return ['status' => 'publish', 'password' => ''];
+            return ['valid' => true, 'raw' => $original, 'status' => 'publish', 'password' => ''];
         }
         if (preg_match('/^PUBLIC::(.+)$/iu', $inner, $p)) {
             $password = sanitize_text_field(trim($p[1]));
-            return ['status' => 'publish', 'password' => $password];
+            return ['valid' => true, 'raw' => $original, 'status' => 'publish', 'password' => $password];
         }
-        return null;
+        return ['valid' => false, 'raw' => $original, 'status' => '', 'password' => ''];
     }
 }
