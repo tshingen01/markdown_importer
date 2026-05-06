@@ -13,6 +13,98 @@
         $tbody.html('<tr class="mi-empty-row"><td colspan="' + colspan + '">' + esc(message) + '</td></tr>');
     }
 
+    function csvEscape(value) {
+        var s = String(value == null ? '' : value);
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+
+    function buildValidationCsv(rows) {
+        var out = ['"filename","release_date","visibility","url_slug","errors"'];
+        (rows || []).forEach(function (row) {
+            out.push(
+                [
+                    csvEscape(row.filename || ''),
+                    csvEscape(row.release_date || ''),
+                    csvEscape(row.visibility || ''),
+                    csvEscape(row.slug || ''),
+                    csvEscape((row.errors || []).join(' | ')),
+                ].join(',')
+            );
+        });
+        return out.join('\r\n');
+    }
+
+    function buildFailedResultCsv(rows) {
+        var out = ['"filename","release_date","visibility","url_slug","message"'];
+        (rows || []).forEach(function (row) {
+            out.push(
+                [
+                    csvEscape(row.filename || ''),
+                    csvEscape(row.release_date || ''),
+                    csvEscape(row.visibility || ''),
+                    csvEscape(row.slug || ''),
+                    csvEscape(row.message || ''),
+                ].join(',')
+            );
+        });
+        return out.join('\r\n');
+    }
+
+    function downloadValidationCsv(rows) {
+        var csv = buildValidationCsv(rows || []);
+        var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        a.href = url;
+        a.download = 'mi-md-validation-' + stamp + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    function downloadFailedResultCsv(rows) {
+        var csv = buildFailedResultCsv(rows || []);
+        var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        a.href = url;
+        a.download = 'mi-import-failed-' + stamp + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    function showUploadValidationErrors(rows, message, batchUploaded, batchTotal) {
+        var parts = [];
+        var invalidCount = (rows || []).length;
+        if (typeof batchUploaded !== 'undefined' && typeof batchTotal !== 'undefined') {
+            parts.push(
+                'Upload failed: ' +
+                    String(invalidCount) +
+                    ' invalid file(s). ' +
+                    String(batchUploaded) +
+                    '/' +
+                    String(batchTotal) +
+                    ' uploaded.'
+            );
+        } else {
+            parts.push('Upload failed: ' + String(invalidCount) + ' invalid file(s).');
+        }
+        parts.push(message || 'Upload blocked because some markdown files are invalid.');
+        (rows || []).forEach(function (row) {
+            var details = (row.errors || []).join('; ');
+            parts.push((row.filename || 'unknown.md') + ': ' + details);
+        });
+        alert(parts.join('\n'));
+        if (rows && rows.length) {
+            downloadValidationCsv(rows);
+        }
+    }
+
     function releaseToToken(release) {
         var v = $.trim(String(release || 'now'));
         if (!v || v.toLowerCase() === 'now') {
@@ -216,8 +308,13 @@
             }).done(function (res) {
                 if (res.success) {
                     renderQueue(res.data.queue || []);
+                    if (typeof res.data.batch_uploaded !== 'undefined' && typeof res.data.batch_total !== 'undefined') {
+                        alert(String(res.data.batch_uploaded) + '/' + String(res.data.batch_total) + ' uploaded.');
+                    }
+                } else if (res.data && res.data.invalid_files && res.data.invalid_files.length) {
+                    showUploadValidationErrors(res.data.invalid_files, res.data.message || '', res.data.batch_uploaded, res.data.batch_total);
                 } else {
-                    alert(MIAdmin.i18n.error);
+                    alert((res.data && res.data.message) || MIAdmin.i18n.error);
                 }
             });
         }
@@ -277,14 +374,15 @@
                 if (res.success) {
                     renderQueue([]);
                     var msg = res.data.message || MIAdmin.i18n.saved;
+                    var failedRows = (res.data && res.data.failed) || [];
                     if (res.data.failed && res.data.failed.length) {
-                        var parts = [msg];
-                        res.data.failed.forEach(function (f) {
-                            parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
-                        });
+                        var parts = ['Import failed: ' + String(failedRows.length) + ' invalid file(s).', msg];
                         msg = parts.join('\n');
                     }
                     alert(msg);
+                    if (failedRows.length) {
+                        downloadFailedResultCsv(failedRows);
+                    }
                 } else {
                     alert(MIAdmin.i18n.error);
                 }
@@ -718,7 +816,6 @@
         var $artBody = $('#mi-upgrade-articles tbody');
         var $qWrap = $('#mi-upgrade-queue-wrap');
         var $qBody = $('#mi-upgrade-queue-table tbody');
-
         function loadArticles(term) {
             ajax('mi_list_articles', { search: term || '' }).done(function (res) {
                 if (!res.success) {
@@ -813,9 +910,14 @@
                 if (res.success) {
                     var q = res.data.queue || [];
                     renderQueue(q);
-                    if (!q.length) {
-                        alert('No staged updates. Ensure the filename keyword matches an existing published article (example: Bitcoin.md -> keyword Bitcoin).');
+                    if (typeof res.data.batch_uploaded !== 'undefined' && typeof res.data.batch_total !== 'undefined') {
+                        alert(String(res.data.batch_uploaded) + '/' + String(res.data.batch_total) + ' uploaded.');
                     }
+                    if (!q.length) {
+                        alert('No staged updates. Ensure the filename keyword matches an existing article (example: Bitcoin.md -> keyword Bitcoin).');
+                    }
+                } else if (res.data && res.data.invalid_files && res.data.invalid_files.length) {
+                    showUploadValidationErrors(res.data.invalid_files, res.data.message || '', res.data.batch_uploaded, res.data.batch_total);
                 } else if (res.data && res.data.message) {
                     alert(res.data.message);
                 } else {
@@ -893,14 +995,18 @@
                         renderQueue([]);
                         loadArticles($('#mi-upgrade-search').val());
                         var msg = res.data.message || MIAdmin.i18n.saved;
+                        var failedRows = (res.data && res.data.failed) || [];
                         if (res.data.failed && res.data.failed.length) {
-                            var parts = [msg];
+                            var parts = ['Upgrade failed: ' + String(failedRows.length) + ' invalid file(s).', msg];
                             res.data.failed.forEach(function (f) {
                                 parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
                             });
                             msg = parts.join('\n');
                         }
                         alert(msg);
+                        if (failedRows.length) {
+                            downloadFailedResultCsv(failedRows);
+                        }
                     }
                 });
             });

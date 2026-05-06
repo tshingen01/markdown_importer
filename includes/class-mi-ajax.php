@@ -78,21 +78,47 @@ class MI_Ajax
             wp_send_json_error(['message' => __('Could not create staging directory.', 'markdown-importer')]);
         }
 
-        $queue = MI_Staging::get_queue($uid);
         $files = $_FILES['files'];
         $count = is_array($files['name']) ? count($files['name']) : 0;
+        $total_md_files = 0;
+        $valid_items = [];
+        $invalid_files = [];
 
         for ($i = 0; $i < $count; $i++) {
             if (! empty($files['error'][$i]) && (int) $files['error'][$i] !== UPLOAD_ERR_OK) {
+                $invalid_files[] = [
+                    'filename' => isset($files['name'][$i]) ? sanitize_file_name((string) $files['name'][$i]) : __('unknown', 'markdown-importer'),
+                    'release_date' => '',
+                    'visibility' => '',
+                    'slug' => '',
+                    'errors' => [__('Upload error for this file.', 'markdown-importer')],
+                ];
                 continue;
             }
             $name = sanitize_file_name($files['name'][$i]);
+            if (preg_match('/\.md$/i', $name)) {
+                $total_md_files++;
+            }
             $tmp = $files['tmp_name'][$i];
             if (! is_uploaded_file($tmp)) {
+                $invalid_files[] = [
+                    'filename' => $name !== '' ? $name : __('unknown', 'markdown-importer'),
+                    'release_date' => '',
+                    'visibility' => '',
+                    'slug' => '',
+                    'errors' => [__('Temporary upload file is invalid.', 'markdown-importer')],
+                ];
                 continue;
             }
             $dest = $dir . '/' . $name;
             if (! move_uploaded_file($tmp, $dest)) {
+                $invalid_files[] = [
+                    'filename' => $name !== '' ? $name : __('unknown', 'markdown-importer'),
+                    'release_date' => '',
+                    'visibility' => '',
+                    'slug' => '',
+                    'errors' => [__('Could not move uploaded file to staging.', 'markdown-importer')],
+                ];
                 continue;
             }
 
@@ -102,64 +128,79 @@ class MI_Ajax
 
             $content = file_get_contents($dest);
             if ($content === false) {
-                $queue[] = [
-                    'id' => MI_Staging::make_item_id(),
-                    'batch' => $batch,
+                $invalid_files[] = [
                     'filename' => $name,
-                    'files_dir' => $dir,
-                    'keyword' => '',
+                    'release_date' => '',
+                    'visibility' => '',
                     'slug' => '',
-                    'title' => '',
-                    'meta_description' => '',
-                    'markdown' => '',
-                    'release_date' => 'now',
-                    'visibility' => 'private',
-                    'password' => '',
-                    'error' => __('Could not read file.', 'markdown-importer'),
+                    'errors' => [__('Could not read file.', 'markdown-importer')],
                 ];
                 continue;
             }
 
-            $parsed = MI_Parser::parse_document($content, $name);
-            if (! $parsed['ok']) {
-                $queue[] = [
-                    'id' => MI_Staging::make_item_id(),
-                    'batch' => $batch,
+            $validation = MI_Parser::validate_document($content);
+            if (! $validation['ok']) {
+                $invalid_files[] = [
                     'filename' => $name,
-                    'files_dir' => $dir,
-                    'keyword' => MI_Parser::keyword_from_filename($name),
-                    'slug' => '',
-                    'title' => '',
-                    'meta_description' => '',
-                    'markdown' => '',
-                    'release_date' => 'now',
-                    'visibility' => 'private',
-                    'password' => '',
-                    'error' => isset($parsed['error']) ? (string) $parsed['error'] : __('Invalid markdown file.', 'markdown-importer'),
+                    'release_date' => isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : '',
+                    'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : '',
+                    'slug' => isset($validation['slug']) ? (string) $validation['slug'] : '',
+                    'errors' => isset($validation['errors']) && is_array($validation['errors']) ? array_values(array_map('strval', $validation['errors'])) : [__('Invalid markdown file.', 'markdown-importer')],
                 ];
                 continue;
             }
 
-            $rel = isset($parsed['release_normalized']) ? (string) $parsed['release_normalized'] : 'now';
-            $queue[] = [
+            $rel = isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : 'now';
+            $valid_items[] = [
                 'id' => MI_Staging::make_item_id(),
                 'batch' => $batch,
                 'filename' => $name,
                 'files_dir' => $dir,
-                'keyword' => $parsed['keyword'],
-                'slug' => $parsed['slug'],
-                'title' => $parsed['title'],
-                'meta_description' => $parsed['meta_description'],
-                'markdown' => $parsed['markdown'],
+                'keyword' => MI_Parser::keyword_from_filename($name),
+                'slug' => $validation['slug'],
+                'title' => $validation['title'],
+                'meta_description' => $validation['meta_description'],
+                'markdown' => $validation['markdown'],
                 'release_date' => MI_Staging::release_for_form($rel),
-                'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
-                'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
+                'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : 'private',
+                'password' => isset($validation['password']) ? (string) $validation['password'] : '',
                 'error' => '',
             ];
         }
 
+        if ($invalid_files !== []) {
+            self::recursive_rmdir($dir);
+            wp_send_json_error(
+                [
+                    'message' => sprintf(
+                        /* translators: %d: number of invalid markdown files */
+                        __('Upload blocked. %d markdown file(s) failed syntax validation.', 'markdown-importer'),
+                        count($invalid_files)
+                    ),
+                    'invalid_files' => $invalid_files,
+                    'batch_uploaded' => count($valid_items),
+                    'batch_total' => $total_md_files,
+                ]
+            );
+        }
+
+        if ($valid_items === []) {
+            self::recursive_rmdir($dir);
+            wp_send_json_error(['message' => __('No valid markdown files were uploaded.', 'markdown-importer')]);
+        }
+
+        $queue = MI_Staging::get_queue($uid);
+        foreach ($valid_items as $item) {
+            $queue[] = $item;
+        }
         MI_Staging::save_queue($uid, $queue);
-        wp_send_json_success(['queue' => self::decorate_queue($queue)]);
+        wp_send_json_success(
+            [
+                'queue' => self::decorate_queue($queue),
+                'batch_uploaded' => count($valid_items),
+                'batch_total' => $total_md_files,
+            ]
+        );
     }
 
     public static function patch_queue_item()
@@ -223,6 +264,9 @@ class MI_Ajax
             if (! empty($item['error'])) {
                 $failed[] = [
                     'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                    'release_date' => isset($item['release_date']) ? (string) $item['release_date'] : '',
+                    'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : '',
+                    'slug' => isset($item['slug']) ? (string) $item['slug'] : '',
                     'message' => (string) $item['error'],
                 ];
                 continue;
@@ -240,6 +284,9 @@ class MI_Ajax
             if (is_wp_error($post_id)) {
                 $failed[] = [
                     'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                    'release_date' => isset($item['release_date']) ? (string) $item['release_date'] : '',
+                    'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : '',
+                    'slug' => isset($item['slug']) ? (string) $item['slug'] : '',
                     'message' => $post_id->get_error_message(),
                 ];
                 continue;
@@ -413,21 +460,47 @@ class MI_Ajax
             wp_send_json_error(['message' => __('Could not create staging directory.', 'markdown-importer')]);
         }
 
-        $queue = self::read_upgrade_queue($uid);
         $files = $_FILES['files'];
         $count = is_array($files['name']) ? count($files['name']) : 0;
+        $total_md_files = 0;
+        $valid_items = [];
+        $invalid_files = [];
 
         for ($i = 0; $i < $count; $i++) {
             if (! empty($files['error'][$i]) && (int) $files['error'][$i] !== UPLOAD_ERR_OK) {
+                $invalid_files[] = [
+                    'filename' => isset($files['name'][$i]) ? sanitize_file_name((string) $files['name'][$i]) : __('unknown', 'markdown-importer'),
+                    'release_date' => '',
+                    'visibility' => '',
+                    'slug' => '',
+                    'errors' => [__('Upload error for this file.', 'markdown-importer')],
+                ];
                 continue;
             }
             $name = sanitize_file_name($files['name'][$i]);
+            if (preg_match('/\.md$/i', $name)) {
+                $total_md_files++;
+            }
             $tmp = $files['tmp_name'][$i];
             if (! is_uploaded_file($tmp)) {
+                $invalid_files[] = [
+                    'filename' => $name !== '' ? $name : __('unknown', 'markdown-importer'),
+                    'release_date' => '',
+                    'visibility' => '',
+                    'slug' => '',
+                    'errors' => [__('Temporary upload file is invalid.', 'markdown-importer')],
+                ];
                 continue;
             }
             $dest = $dir . '/' . $name;
             if (! move_uploaded_file($tmp, $dest)) {
+                $invalid_files[] = [
+                    'filename' => $name !== '' ? $name : __('unknown', 'markdown-importer'),
+                    'release_date' => '',
+                    'visibility' => '',
+                    'slug' => '',
+                    'errors' => [__('Could not move uploaded file to staging.', 'markdown-importer')],
+                ];
                 continue;
             }
             if (! preg_match('/\.md$/i', $name)) {
@@ -436,73 +509,94 @@ class MI_Ajax
 
             $content = file_get_contents($dest);
             if ($content === false) {
-                continue;
-            }
-
-            $parsed = MI_Parser::parse_document($content, $name);
-            $keyword = MI_Parser::keyword_from_filename($name);
-            if (! $parsed['ok']) {
-                $queue[] = [
-                    'id' => MI_Staging::make_item_id(),
-                    'batch' => $batch,
+                $invalid_files[] = [
                     'filename' => $name,
-                    'files_dir' => $dir,
-                    'keyword' => $keyword,
-                    'target_post_id' => 0,
+                    'release_date' => '',
+                    'visibility' => '',
                     'slug' => '',
-                    'title' => '',
-                    'meta_description' => '',
-                    'markdown' => '',
-                    'release_date' => 'now',
-                    'visibility' => 'private',
-                    'password' => '',
-                    'error' => isset($parsed['error']) ? (string) $parsed['error'] : __('Invalid markdown file.', 'markdown-importer'),
+                    'errors' => [__('Could not read file.', 'markdown-importer')],
                 ];
                 continue;
             }
 
-            $target = MI_Article_Service::find_post_id_by_keyword($parsed['keyword']);
-            if ($target <= 0) {
-                $queue[] = [
-                    'id' => MI_Staging::make_item_id(),
-                    'batch' => $batch,
+            $keyword = MI_Parser::keyword_from_filename($name);
+            $validation = MI_Parser::validate_document($content);
+            if (! $validation['ok']) {
+                $invalid_files[] = [
                     'filename' => $name,
-                    'files_dir' => $dir,
-                    'keyword' => $parsed['keyword'],
-                    'target_post_id' => 0,
-                    'slug' => $parsed['slug'],
-                    'title' => $parsed['title'],
-                    'meta_description' => $parsed['meta_description'],
-                    'markdown' => $parsed['markdown'],
-                    'release_date' => MI_Staging::release_for_form((string) $parsed['release_normalized']),
-                    'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
-                    'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
-                    'error' => __('No article matches this keyword (filename base).', 'markdown-importer'),
+                    'release_date' => isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : '',
+                    'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : '',
+                    'slug' => isset($validation['slug']) ? (string) $validation['slug'] : '',
+                    'errors' => isset($validation['errors']) && is_array($validation['errors']) ? array_values(array_map('strval', $validation['errors'])) : [__('Invalid markdown file.', 'markdown-importer')],
                 ];
                 continue;
             }
 
-            $rel = isset($parsed['release_normalized']) ? (string) $parsed['release_normalized'] : 'now';
-            $queue[] = [
+            $target = MI_Article_Service::find_post_id_by_keyword($keyword);
+            $target_post = $target > 0 ? get_post($target) : null;
+            if ($target <= 0 || ! $target_post) {
+                $invalid_files[] = [
+                    'filename' => $name,
+                    'release_date' => isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : '',
+                    'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : '',
+                    'slug' => isset($validation['slug']) ? (string) $validation['slug'] : '',
+                    'errors' => [__('No article matches this filename keyword.', 'markdown-importer')],
+                ];
+                continue;
+            }
+
+            $rel = isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : 'now';
+            $valid_items[] = [
                 'id' => MI_Staging::make_item_id(),
                 'batch' => $batch,
                 'filename' => $name,
                 'files_dir' => $dir,
-                'keyword' => $parsed['keyword'],
+                'keyword' => $keyword,
                 'target_post_id' => $target,
-                'slug' => $parsed['slug'],
-                'title' => $parsed['title'],
-                'meta_description' => $parsed['meta_description'],
-                'markdown' => $parsed['markdown'],
+                'slug' => $validation['slug'],
+                'title' => $validation['title'],
+                'meta_description' => $validation['meta_description'],
+                'markdown' => $validation['markdown'],
                 'release_date' => MI_Staging::release_for_form($rel),
-                'visibility' => isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private',
-                'password' => isset($parsed['password']) ? (string) $parsed['password'] : '',
+                'visibility' => isset($validation['visibility']) ? (string) $validation['visibility'] : 'private',
+                'password' => isset($validation['password']) ? (string) $validation['password'] : '',
                 'error' => '',
             ];
         }
 
+        if ($invalid_files !== []) {
+            self::recursive_rmdir($dir);
+            wp_send_json_error(
+                [
+                    'message' => sprintf(
+                        /* translators: %d: number of invalid markdown files */
+                        __('Upgrade upload blocked. %d markdown file(s) failed validation.', 'markdown-importer'),
+                        count($invalid_files)
+                    ),
+                    'invalid_files' => $invalid_files,
+                    'batch_uploaded' => count($valid_items),
+                    'batch_total' => $total_md_files,
+                ]
+            );
+        }
+
+        if ($valid_items === []) {
+            self::recursive_rmdir($dir);
+            wp_send_json_error(['message' => __('No valid markdown files were uploaded.', 'markdown-importer')]);
+        }
+
+        $queue = self::read_upgrade_queue($uid);
+        foreach ($valid_items as $item) {
+            $queue[] = $item;
+        }
         self::write_upgrade_queue($uid, $queue);
-        wp_send_json_success(['queue' => self::decorate_upgrade_queue($queue)]);
+        wp_send_json_success(
+            [
+                'queue' => self::decorate_upgrade_queue($queue),
+                'batch_uploaded' => count($valid_items),
+                'batch_total' => $total_md_files,
+            ]
+        );
     }
 
     public static function patch_upgrade_item()
@@ -575,6 +669,9 @@ class MI_Ajax
             if (is_wp_error($result)) {
                 $failed[] = [
                     'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                    'release_date' => isset($item['release_date']) ? (string) $item['release_date'] : '',
+                    'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : '',
+                    'slug' => isset($item['slug']) ? (string) $item['slug'] : '',
                     'message' => $result->get_error_message(),
                 ];
                 continue;

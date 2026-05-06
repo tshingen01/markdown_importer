@@ -7,6 +7,85 @@ if (! defined('ABSPATH')) {
 class MI_Parser
 {
     /**
+     * Validate required MD structure fields used by bulk upload preflight.
+     *
+     * @return array{
+     *   ok:bool,
+     *   errors:array<int,string>,
+     *   release_raw:string,
+     *   release_normalized:string,
+     *   visibility:string,
+     *   password:string,
+     *   meta_description:string,
+     *   slug:string,
+     *   title:string,
+     *   markdown:string
+     * }
+     */
+    public static function validate_document($content)
+    {
+        $content = str_replace(["\r\n", "\r"], "\n", (string) $content);
+        $lines = explode("\n", $content);
+        $errors = [];
+
+        if (count($lines) < 11) {
+            $errors[] = __('File must have at least 11 lines (release/visibility/meta/slug/title + markdown).', 'markdown-importer');
+        }
+
+        $release_raw = '';
+        $release_normalized = 'now';
+        $visibility_status = 'private';
+        $visibility_password = '';
+        $meta_description = trim(isset($lines[4]) ? (string) $lines[4] : '');
+        $slug_line = trim(isset($lines[6]) ? (string) $lines[6] : '');
+        $title = trim(isset($lines[8]) ? (string) $lines[8] : '');
+        $markdown = implode("\n", array_slice($lines, 10));
+
+        $line1 = trim(isset($lines[0]) ? (string) $lines[0] : '');
+        $release = self::parse_release_line($line1);
+        if ($release === null) {
+            $errors[] = __('Line 1 (release date) must be [[YYYY_MM_DD::HH_MM]] or [[now]].', 'markdown-importer');
+        } else {
+            $release_raw = $release['raw'];
+            $release_normalized = $release['normalized'];
+        }
+
+        $line3 = trim(isset($lines[2]) ? (string) $lines[2] : '');
+        $visibility = self::parse_visibility_line($line3);
+        if ($visibility === null) {
+            $errors[] = __('Line 3 (visibility) must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer');
+        } else {
+            $visibility_status = $visibility['status'];
+            $visibility_password = $visibility['password'];
+        }
+
+        if ($slug_line === '') {
+            $errors[] = __('Line 7 (URL slug) must not be empty.', 'markdown-importer');
+        }
+        if ($title === '') {
+            $errors[] = __('Line 9 (title) must not be empty.', 'markdown-importer');
+        }
+
+        $sanitized_slug = sanitize_title($slug_line);
+        if ($slug_line !== '' && $sanitized_slug === '') {
+            $errors[] = __('Line 7 (URL slug) is invalid.', 'markdown-importer');
+        }
+
+        return [
+            'ok' => $errors === [],
+            'errors' => $errors,
+            'release_raw' => $release_raw,
+            'release_normalized' => $release_normalized,
+            'visibility' => $visibility_status,
+            'password' => $visibility_password,
+            'meta_description' => $meta_description,
+            'slug' => $sanitized_slug,
+            'title' => $title,
+            'markdown' => ltrim($markdown, "\n"),
+        ];
+    }
+
+    /**
      * Keyword from filename: Satoshi-Nakamoto.md -> Satoshi-Nakamoto
      */
     public static function keyword_from_filename($basename)
@@ -22,50 +101,26 @@ class MI_Parser
      */
     public static function parse_document($content, $filename_for_keyword = '')
     {
-        $content = str_replace(["\r\n", "\r"], "\n", $content);
-        $lines = explode("\n", $content);
-
-        if (count($lines) < 11) {
-            return ['ok' => false, 'error' => __('File must have at least 11 lines (release/visibility/meta/slug/title + markdown).', 'markdown-importer')];
+        $validation = self::validate_document($content);
+        if (! $validation['ok']) {
+            return [
+                'ok' => false,
+                'error' => isset($validation['errors'][0]) ? (string) $validation['errors'][0] : __('Invalid markdown file.', 'markdown-importer'),
+                'errors' => $validation['errors'],
+            ];
         }
-
-        $line1 = trim($lines[0]);
-        $release = self::parse_release_line($line1);
-        if ($release === null) {
-            return ['ok' => false, 'error' => __('Line 1 must be [[YYYY_MM_DD::HH_MM]] or [[now]].', 'markdown-importer')];
-        }
-
-        $visibility = self::parse_visibility_line(trim($lines[2]));
-        if ($visibility === null) {
-            return ['ok' => false, 'error' => __('Line 3 must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer')];
-        }
-
-        $meta_description = trim($lines[4]);
-        $slug = trim($lines[6]);
-        $title = trim($lines[8]);
-
-        if ($slug === '' || $title === '') {
-            return ['ok' => false, 'error' => __('Line 7 (slug) and line 9 (title) must not be empty.', 'markdown-importer')];
-        }
-
-        $slug = sanitize_title($slug);
-        if ($slug === '') {
-            return ['ok' => false, 'error' => __('Invalid URL slug on line 7.', 'markdown-importer')];
-        }
-
-        $markdown = implode("\n", array_slice($lines, 10));
         $keyword = $filename_for_keyword !== '' ? self::keyword_from_filename($filename_for_keyword) : '';
 
         return [
             'ok' => true,
-            'release_raw' => $release['raw'],
-            'release_normalized' => $release['normalized'],
-            'visibility' => $visibility['status'],
-            'password' => $visibility['password'],
-            'meta_description' => $meta_description,
-            'slug' => $slug,
-            'title' => $title,
-            'markdown' => ltrim($markdown, "\n"),
+            'release_raw' => $validation['release_raw'],
+            'release_normalized' => $validation['release_normalized'],
+            'visibility' => $validation['visibility'],
+            'password' => $validation['password'],
+            'meta_description' => $validation['meta_description'],
+            'slug' => $validation['slug'],
+            'title' => $validation['title'],
+            'markdown' => $validation['markdown'],
             'keyword' => $keyword,
         ];
     }
