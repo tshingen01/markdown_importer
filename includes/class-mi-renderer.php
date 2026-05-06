@@ -62,7 +62,8 @@ class MI_Renderer
         $work = self::replace_cta_tags($work);
         $work = self::replace_image_tags($work, $post_id);
         $work = self::replace_external_links_with_targets($work);
-        $work = self::replace_article_keyword_links_with_targets($work, (int) $post_id);
+        $work = self::replace_article_keyword_links_three_part($work);
+        $work = self::replace_article_keyword_links_with_targets($work);
         $work = self::replace_article_keyword_links($work, (int) $post_id);
         if (! class_exists('Parsedown')) {
             return '<div class="mi-article"><pre>' . esc_html($work) . '</pre></div>';
@@ -173,36 +174,63 @@ class MI_Renderer
     }
 
     /**
-     * [[Keyword::target]] → link to the mi_article with that keyword (no "::" in token — use [[CTA::x]] / [[image::…]] first).
+     * [[keyword::title::target]] → internal mi_article link (runs after CTA / image / external).
+     * Example: [[why-should-i-invest-in-crypto::Invest in Bitcoin now::self]]
      */
-    private static function replace_article_keyword_links_with_targets($text, $current_post_id)
+    private static function replace_article_keyword_links_three_part($text)
     {
         return preg_replace_callback(
-            '/\[\[([^:\[\]]+)::([^\]]+)\]\]/u',
-            function ($m) use ($current_post_id) {
-                $key = trim($m[1]);
-                $raw_target = trim($m[2]);
-                if ($key === '' || $raw_target === '') {
-                    return $m[0];
-                }
-                $pid = MI_Article_Service::find_post_id_by_keyword($key, 0);
-                if ($pid <= 0) {
-                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
-                }
-                $post = get_post($pid);
-                if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
-                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
-                }
-                if ($post->post_status === 'private' && ! self::can_view_private_articles()) {
-                    return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
-                }
-                $url = get_permalink($pid);
-                $title = get_the_title($pid);
-                $label = $title !== '' ? $title : $key;
-                return self::build_link_html($url, $label, $raw_target);
+            '/\[\[([^\[\]:]+)::(.+?)::([^\]]+)\]\]/u',
+            function ($m) {
+                $html = self::build_article_keyword_link_html(trim($m[1]), trim($m[3]), trim($m[2]));
+                return $html !== '' ? $html : $m[0];
             },
             $text
         );
+    }
+
+    /**
+     * [[Keyword::target]] → link using the article title as label (legacy two-part form).
+     */
+    private static function replace_article_keyword_links_with_targets($text)
+    {
+        return preg_replace_callback(
+            '/\[\[([^:\[\]]+)::([^\]]+)\]\]/u',
+            function ($m) {
+                $html = self::build_article_keyword_link_html(trim($m[1]), trim($m[2]), null);
+                return $html !== '' ? $html : $m[0];
+            },
+            $text
+        );
+    }
+
+    /**
+     * @param string|null $link_label Explicit anchor text; null = use post title or keyword.
+     */
+    private static function build_article_keyword_link_html($key, $raw_target, $link_label)
+    {
+        $key = trim((string) $key);
+        $raw_target = trim((string) $raw_target);
+        if ($key === '' || $raw_target === '') {
+            return '';
+        }
+        $pid = MI_Article_Service::find_post_id_by_keyword($key, 0);
+        if ($pid <= 0) {
+            return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
+        }
+        $post = get_post($pid);
+        if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
+            return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
+        }
+        if ($post->post_status === 'private' && ! self::can_view_private_articles()) {
+            return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
+        }
+        $url = get_permalink($pid);
+        $title = get_the_title($pid);
+        $label = ($link_label !== null && $link_label !== '')
+            ? $link_label
+            : ($title !== '' ? $title : $key);
+        return self::build_link_html($url, $label, $raw_target);
     }
 
     /**
