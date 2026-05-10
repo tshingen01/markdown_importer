@@ -20,25 +20,18 @@ if (! defined('ABSPATH')) {
             <h3><?php esc_html_e('Markdown template (copy/paste)', 'markdown-importer'); ?></h3>
             <textarea class="mi-md-template-code" readonly spellcheck="false">
 [[2026_05_21::18_55]]
-
 [[PRIVATE]]
-
 This article will explain to you how to invest in Bitcoin
-
 invest-in-bitcoin-today
-
 How to Invest in Bitcoin
-
 # How to Invest in Bitcoin
-
 Intro text...
-
 [[image::ALT-ATTRIBUTE::xxx.png]]
 [[Bitcoin::Bitcoin::self]]
 [[https://google.com::Google::blank]]
 [[CTA::START]]
             </textarea>
-            <p class="description"><?php esc_html_e('Line order: release, visibility, meta description, slug, title, then markdown body.', 'markdown-importer'); ?></p>
+            <p class="description"><?php esc_html_e('Lines 1–5: release, visibility, meta description, URL slug, title (no blank lines between). Line 6 onward: markdown body.', 'markdown-importer'); ?></p>
         </div>
     </div>
 

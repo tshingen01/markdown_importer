@@ -140,15 +140,15 @@
         var body = String(article.markdown || '').replace(/^\n+/, '');
         return (
             releaseToToken(article.release_date) +
-            '\n\n' +
+            '\n' +
             visibilityToToken(article.visibility, article.password) +
-            '\n\n' +
+            '\n' +
             String(article.meta_description || '') +
-            '\n\n' +
+            '\n' +
             String(article.slug || '') +
-            '\n\n' +
+            '\n' +
             String(article.title || '') +
-            '\n\n' +
+            '\n' +
             body
         );
     }
@@ -192,24 +192,24 @@
     function parseStructuredMd(md) {
         var content = String(md || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         var lines = content.split('\n');
-        if (lines.length < 11) {
-            return { ok: false, message: 'Invalid MD structure. Expect at least 11 lines.' };
+        if (lines.length < 5) {
+            return { ok: false, message: 'Invalid MD structure. Expect lines 1–5 header (release, visibility, meta, slug, title) then markdown body.' };
         }
         var releaseDate = parseReleaseToken(lines[0]);
         if (!releaseDate) {
             return { ok: false, message: 'Line 1 must be [[YYYY_MM_DD::HH_MM]] or [[now]].' };
         }
-        var vis = parseVisibilityToken(lines[2]);
+        var vis = parseVisibilityToken(lines[1]);
         if (!vis) {
-            return { ok: false, message: 'Line 3 must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].' };
+            return { ok: false, message: 'Line 2 must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].' };
         }
-        var meta = $.trim(lines[4] || '');
-        var slug = $.trim(lines[6] || '');
-        var title = $.trim(lines[8] || '');
+        var meta = $.trim(lines[2] || '');
+        var slug = $.trim(lines[3] || '');
+        var title = $.trim(lines[4] || '');
         if (!slug || !title) {
-            return { ok: false, message: 'Line 7 (slug) and line 9 (title) are required.' };
+            return { ok: false, message: 'Line 4 (slug) and line 5 (title) are required.' };
         }
-        var markdown = lines.slice(10).join('\n').replace(/^\n+/, '');
+        var markdown = lines.slice(5).join('\n').replace(/^\n+/, '');
         return {
             ok: true,
             release_date: releaseDate,

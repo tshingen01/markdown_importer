@@ -32,8 +32,9 @@ class MI_Parser
         $lines = explode("\n", $content);
         $errors = [];
 
-        if (count($lines) < 11) {
-            $errors[] = __('File must have at least lines (release, visibility, meta, slug, title + markdown).', 'markdown-importer');
+        /* Compact header: line 1 release, 2 visibility, 3 meta, 4 slug, 5 title; markdown from line 6 (no blank lines between). */
+        if (count($lines) < 5) {
+            $errors[] = __('File must have at least 5 header lines (release, visibility, meta, slug, title) plus markdown body.', 'markdown-importer');
         }
 
         $release_raw = '';
@@ -42,29 +43,28 @@ class MI_Parser
         $visibility_status = 'private';
         $visibility_password = '';
         $visibility_error = '';
-        $meta_description = trim(isset($lines[4]) ? (string) $lines[4] : '');
-        $slug_line = trim(isset($lines[6]) ? (string) $lines[6] : '');
+        $meta_description = trim(isset($lines[2]) ? (string) $lines[2] : '');
+        $slug_line = trim(isset($lines[3]) ? (string) $lines[3] : '');
         $slug_error = '';
-        $title = trim(isset($lines[8]) ? (string) $lines[8] : '');
-        $markdown = implode("\n", array_slice($lines, 10));
+        $title = trim(isset($lines[4]) ? (string) $lines[4] : '');
+        $markdown = implode("\n", array_slice($lines, 5));
 
         $line1 = trim(isset($lines[0]) ? (string) $lines[0] : '');
         $release = self::parse_release_line($line1);
         if (! $release['valid']) {
             $release_raw = $release['raw'];
             $release_error = __('Invalid syntax.', 'markdown-importer');
-            $errors[] = __('Release date line must be [[YYYY_MM_DD::HH_MM]] or [[now]].', 'markdown-importer') . ' ' . $release_error;
+            $errors[] = __('Line 1 (release date) must be [[YYYY_MM_DD::HH_MM]] or [[now]].', 'markdown-importer') . ' ' . $release_error;
         } else {
             $release_raw = $release['raw'];
             $release_normalized = $release['normalized'];
         }
 
-        $line3 = trim(isset($lines[2]) ? (string) $lines[2] : '');
-        $visibility = self::parse_visibility_line($line3);
+        $line2 = trim(isset($lines[1]) ? (string) $lines[1] : '');
+        $visibility = self::parse_visibility_line($line2);
         if (! $visibility['valid']) {
-            $visibility_status = $visibility['status'];
             $visibility_error = __('Invalid syntax.', 'markdown-importer');
-            $errors[] = __('Visibility line must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer') . ' ' . $visibility_error;
+            $errors[] = __('Line 2 (visibility) must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer') . ' ' . $visibility_error;
         } else {
             $visibility_status = $visibility['status'];
             $visibility_password = $visibility['password'];
@@ -72,17 +72,21 @@ class MI_Parser
 
         if ($slug_line === '') {
             $slug_error = __('Empty URL slug is not allowed.', 'markdown-importer');
-            $errors[] = __('URL slug line cannot be empty.', 'markdown-importer');
+            $errors[] = __('Line 4 (URL slug) cannot be empty.', 'markdown-importer');
         }
         if ($title === '') {
-            $errors[] = __('Title line cannot be empty.', 'markdown-importer');
+            $errors[] = __('Line 5 (title) cannot be empty.', 'markdown-importer');
         }
 
         $sanitized_slug = sanitize_title($slug_line);
+        if ($slug_line !== '' && $sanitized_slug === '') {
+            $slug_error = __('Invalid slug after sanitization.', 'markdown-importer');
+            $errors[] = __('Line 4 (URL slug) is invalid.', 'markdown-importer') . ' ' . $slug_error;
+        }
 
         if ($slug_line !== '' && ! preg_match('/^[A-Za-z0-9-]+$/', $slug_line)) {
             $slug_error = __('Invalid syntax.', 'markdown-importer');
-            $errors[] = __('URL slug line contains disallowed characters. Only a-z, 0-9, and hyphen (-) are allowed.', 'markdown-importer') . ' ' . $slug_error;
+            $errors[] = __('Line 4 (URL slug) contains disallowed characters. Only a-z, 0-9, and hyphen (-) are allowed.', 'markdown-importer') . ' ' . $slug_error;
         }
 
         return [
