@@ -12,7 +12,7 @@ if (! defined('ABSPATH')) {
         <p class="mi-dropzone-text"><?php esc_html_e('Drop files to upload', 'markdown-importer'); ?></p>
         <p class="mi-or"><?php esc_html_e('or', 'markdown-importer'); ?></p>
         <button type="button" class="button button-secondary" id="mi-upgrade-file-picker"><?php esc_html_e('Select Files', 'markdown-importer'); ?></button>
-        <input type="file" id="mi-upgrade-file-input" multiple accept=".md,.markdown,.png,.jpg,.jpeg,.gif,.webp,.svg,image/*" class="mi-hidden-input" />
+        <input type="file" id="mi-upgrade-file-input" multiple accept=".md,.markdown" class="mi-hidden-input" />
     </div>
 
     <div class="mi-toolbar">
