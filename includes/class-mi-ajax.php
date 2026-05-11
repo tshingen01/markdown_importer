@@ -17,6 +17,8 @@ class MI_Ajax
             'mi_remove_queue_item',
             'mi_confirm_import',
             'mi_clear_import_queue',
+            'mi_get_import_queue_item',
+            'mi_save_import_queue_item',
             'mi_list_articles',
             'mi_get_article',
             'mi_save_article',
@@ -274,6 +276,183 @@ class MI_Ajax
         }
         MI_Staging::save_queue($uid, $queue);
         wp_send_json_success(['queue' => self::decorate_queue($queue)]);
+    }
+
+    public static function get_import_queue_item()
+    {
+        self::auth();
+        $uid = get_current_user_id();
+        $id = isset($_POST['id']) ? sanitize_text_field(wp_unslash($_POST['id'])) : '';
+        $queue = MI_Staging::get_queue($uid);
+        foreach ($queue as $item) {
+            if (isset($item['id']) && $item['id'] === $id) {
+                $rel = isset($item['release_date']) ? (string) $item['release_date'] : 'now';
+                wp_send_json_success(
+                    [
+                        'item' => [
+                            'id' => (string) $item['id'],
+                            'filename' => isset($item['filename']) ? (string) $item['filename'] : '',
+                            'keyword' => isset($item['keyword']) ? (string) $item['keyword'] : '',
+                            'slug' => isset($item['slug']) ? (string) $item['slug'] : '',
+                            'title' => isset($item['title']) ? (string) $item['title'] : '',
+                            'meta_description' => isset($item['meta_description']) ? (string) $item['meta_description'] : '',
+                            'markdown' => isset($item['markdown']) ? (string) $item['markdown'] : '',
+                            'release_date' => MI_Staging::release_for_form($rel),
+                            'visibility' => isset($item['visibility']) ? (string) $item['visibility'] : 'private',
+                            'password' => isset($item['password']) ? (string) $item['password'] : '',
+                            'error' => isset($item['error']) ? (string) $item['error'] : '',
+                        ],
+                    ]
+                );
+                return;
+            }
+        }
+        wp_send_json_error(['message' => __('Queue item not found.', 'markdown-importer')]);
+    }
+
+    public static function save_import_queue_item()
+    {
+        self::auth();
+        $uid = get_current_user_id();
+        $id = isset($_POST['id']) ? sanitize_text_field(wp_unslash($_POST['id'])) : '';
+        $keyword = isset($_POST['keyword']) ? trim(wp_unslash($_POST['keyword'])) : '';
+        $title = isset($_POST['title']) ? wp_unslash($_POST['title']) : '';
+        $slug_in = isset($_POST['slug']) ? wp_unslash($_POST['slug']) : '';
+        $meta = isset($_POST['meta_description']) ? wp_unslash($_POST['meta_description']) : '';
+        $md = isset($_POST['markdown']) ? wp_unslash($_POST['markdown']) : '';
+        $release = isset($_POST['release_date']) ? wp_unslash($_POST['release_date']) : 'now';
+        $vis = isset($_POST['visibility']) ? sanitize_key(wp_unslash($_POST['visibility'])) : 'private';
+        if (! in_array($vis, ['publish', 'private', 'draft'], true)) {
+            $vis = 'private';
+        }
+        $pwd = isset($_POST['password']) ? sanitize_text_field(wp_unslash($_POST['password'])) : '';
+        if ($vis !== 'publish') {
+            $pwd = '';
+        }
+
+        if ($id === '') {
+            wp_send_json_error(['message' => __('Missing queue item id.', 'markdown-importer')]);
+        }
+        if ($keyword === '') {
+            wp_send_json_error(['message' => __('Keyword cannot be empty.', 'markdown-importer')]);
+        }
+
+        $queue = MI_Staging::get_queue($uid);
+        $idx = null;
+        $item = null;
+        foreach ($queue as $i => $row) {
+            if (isset($row['id']) && $row['id'] === $id) {
+                $idx = $i;
+                $item = $row;
+                break;
+            }
+        }
+        if ($item === null || $idx === null) {
+            wp_send_json_error(['message' => __('Queue item not found.', 'markdown-importer')]);
+        }
+
+        $composed = MI_Parser::compose_document($release, $vis, $pwd, $meta, $slug_in, $title, $md);
+        $validation = MI_Parser::validate_document($composed);
+        if (! $validation['ok']) {
+            $msg = isset($validation['errors'][0]) ? (string) $validation['errors'][0] : __('Invalid markdown structure.', 'markdown-importer');
+            wp_send_json_error(['message' => $msg]);
+        }
+
+        $slug_s = isset($validation['slug']) ? (string) $validation['slug'] : '';
+        $kw_lower = strtolower($keyword);
+        $dup_kw = self::import_queue_keyword_conflict($queue, $id, $kw_lower);
+        if ($dup_kw !== '') {
+            wp_send_json_error(['message' => $dup_kw]);
+        }
+        $dup_slug = self::import_queue_slug_conflict($queue, $id, $slug_s);
+        if ($dup_slug !== '') {
+            wp_send_json_error(['message' => $dup_slug]);
+        }
+
+        $keyword_post_id = MI_Article_Service::find_post_id_by_keyword($keyword, 0);
+        if ($keyword_post_id > 0) {
+            wp_send_json_error(
+                [
+                    'message' => sprintf(
+                        /* translators: %d: post ID */
+                        __('This keyword is already used by another article (post ID: %d).', 'markdown-importer'),
+                        (int) $keyword_post_id
+                    ),
+                ]
+            );
+        }
+        $slug_post_id = MI_Article_Service::find_post_id_by_slug($slug_s, 0);
+        if ($slug_post_id > 0) {
+            wp_send_json_error(
+                [
+                    'message' => sprintf(
+                        /* translators: %d: post ID */
+                        __('This URL slug is already used by another article (post ID: %d).', 'markdown-importer'),
+                        (int) $slug_post_id
+                    ),
+                ]
+            );
+        }
+
+        $rel_norm = isset($validation['release_normalized']) ? (string) $validation['release_normalized'] : 'now';
+        $queue[$idx]['keyword'] = $keyword;
+        $queue[$idx]['slug'] = $slug_s;
+        $queue[$idx]['title'] = isset($validation['title']) ? (string) $validation['title'] : '';
+        $queue[$idx]['meta_description'] = isset($validation['meta_description']) ? (string) $validation['meta_description'] : '';
+        $queue[$idx]['markdown'] = isset($validation['markdown']) ? (string) $validation['markdown'] : '';
+        $queue[$idx]['release_date'] = MI_Staging::release_for_form($rel_norm);
+        $queue[$idx]['visibility'] = isset($validation['visibility']) ? (string) $validation['visibility'] : 'private';
+        $queue[$idx]['password'] = isset($validation['password']) ? (string) $validation['password'] : '';
+        $queue[$idx]['error'] = '';
+
+        if (! empty($queue[$idx]['files_dir']) && ! empty($queue[$idx]['filename']) && is_dir((string) $queue[$idx]['files_dir'])) {
+            $path = trailingslashit((string) $queue[$idx]['files_dir']) . (string) $queue[$idx]['filename'];
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+            file_put_contents($path, $composed);
+        }
+
+        MI_Cta::ensure_from_markdown($queue[$idx]['markdown']);
+
+        MI_Staging::save_queue($uid, $queue);
+        wp_send_json_success(['queue' => self::decorate_queue($queue)]);
+    }
+
+    /**
+     * @return string Empty if no conflict, else error message.
+     */
+    private static function import_queue_keyword_conflict(array $queue, $exclude_id, $keyword_lower)
+    {
+        foreach ($queue as $other) {
+            if (! isset($other['id']) || $other['id'] === $exclude_id) {
+                continue;
+            }
+            if (strtolower(trim((string) ($other['keyword'] ?? ''))) === $keyword_lower) {
+                return __('This keyword is already used by another file in the import queue.', 'markdown-importer');
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @return string Empty if no conflict, else error message.
+     */
+    private static function import_queue_slug_conflict(array $queue, $exclude_id, $slug_canonical)
+    {
+        if ($slug_canonical === '') {
+            return '';
+        }
+        foreach ($queue as $other) {
+            if (! isset($other['id']) || $other['id'] === $exclude_id) {
+                continue;
+            }
+            $o = isset($other['slug']) ? sanitize_title((string) $other['slug']) : '';
+            if ($o !== '' && $o === $slug_canonical) {
+                return __('This URL slug is already used by another file in the import queue.', 'markdown-importer');
+            }
+        }
+
+        return '';
     }
 
     public static function remove_queue_item()

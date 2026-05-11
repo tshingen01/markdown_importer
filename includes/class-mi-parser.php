@@ -108,6 +108,57 @@ class MI_Parser
     }
 
     /**
+     * Build canonical upload markdown (lines 1–5 header + body) from editor fields.
+     */
+    public static function compose_document($release_form, $visibility, $password, $meta_description, $slug_line, $title, $markdown_body)
+    {
+        $line1 = self::release_token_from_form($release_form);
+        $line2 = self::visibility_token_from_status($visibility, $password);
+        $meta = (string) $meta_description;
+        $slug_raw = trim((string) $slug_line);
+        $title_t = trim((string) $title);
+        $body = ltrim((string) $markdown_body, "\n");
+
+        return $line1 . "\n" . $line2 . "\n" . $meta . "\n" . $slug_raw . "\n" . $title_t . "\n" . $body;
+    }
+
+    /**
+     * @param string $release_form Admin form value: "now", "YYYY-MM-DD", or "YYYY-MM-DD HH:MM"
+     */
+    public static function release_token_from_form($release_form)
+    {
+        $v = trim((string) $release_form);
+        if ($v === '' || strtolower($v) === 'now') {
+            return '[[now]]';
+        }
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?$/', $v, $m)) {
+            $hh = isset($m[4]) && $m[4] !== '' ? $m[4] : '12';
+            $mm = isset($m[5]) && $m[5] !== '' ? $m[5] : '00';
+
+            return '[[' . $m[1] . '_' . $m[2] . '_' . $m[3] . '::' . $hh . '_' . $mm . ']]';
+        }
+
+        return '[[now]]';
+    }
+
+    /**
+     * @param string $visibility publish|private|draft
+     */
+    public static function visibility_token_from_status($visibility, $password)
+    {
+        $vis = strtolower(trim((string) $visibility));
+        $pwd = trim((string) $password);
+        if ($vis === 'publish') {
+            return $pwd !== '' ? '[[PUBLIC::' . $pwd . ']]' : '[[PUBLIC]]';
+        }
+        if ($vis === 'draft') {
+            return '[[DRAFT]]';
+        }
+
+        return '[[PRIVATE]]';
+    }
+
+    /**
      * Keyword from filename: Satoshi-Nakamoto.md -> Satoshi-Nakamoto
      */
     public static function keyword_from_filename($basename)

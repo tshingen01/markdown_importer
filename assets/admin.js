@@ -247,10 +247,63 @@
         var $step1 = $('#mi-upload-step1');
         var $step2 = $('#mi-upload-step2');
         var $tbody = $('#mi-queue-table tbody');
+        var $queueEditor = $('#mi-queue-editor');
+        var currentQueueId = null;
+
+        function syncQueuePasswordField() {
+            var vis = $('input[name="mi-q-e-vis"]:checked').val();
+            var $pwd = $('#mi-q-e-password');
+            var isPublic = vis === 'publish';
+            $pwd.prop('disabled', !isPublic);
+            if (!isPublic) {
+                $pwd.val('');
+            }
+        }
+
+        function setQueueEditorMode(viewOnly) {
+            var ro = !!viewOnly;
+            $queueEditor.toggleClass('mi-queue-view-mode', ro);
+            $('#mi-q-e-save').toggle(!ro);
+            $(
+                '#mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-release, #mi-q-e-password'
+            )
+                .prop('readonly', ro)
+                .prop('disabled', false);
+            $('input[name="mi-q-e-vis"]').prop('disabled', ro);
+            if (ro) {
+                $('#mi-q-e-password').prop('disabled', false);
+            }
+        }
+
+        function fillQueueEditorFromItem(it, viewOnly) {
+            if (!it) {
+                return;
+            }
+            setQueueEditorMode(viewOnly);
+            currentQueueId = it.id;
+            $('#mi-q-filename').text(it.filename || '');
+            $('#mi-q-e-title').val(it.title || '');
+            $('#mi-q-e-keyword').val(it.keyword || '');
+            $('#mi-q-e-slug').val(it.slug || '');
+            $('#mi-q-e-meta').val(it.meta_description || '');
+            $('#mi-q-e-md').val(buildStructuredMd(it));
+            $('#mi-q-e-release').val(it.release_date || 'now');
+            $('#mi-q-e-password').val(it.password || '');
+            var v = String(it.visibility || 'private').toLowerCase();
+            if (v !== 'publish' && v !== 'private' && v !== 'draft') {
+                v = 'private';
+            }
+            $('input[name="mi-q-e-vis"][value="' + v + '"]').prop('checked', true);
+            if (!viewOnly) {
+                syncQueuePasswordField();
+            }
+        }
 
         function renderQueue(rows) {
             $tbody.empty();
             if (!rows || !rows.length) {
+                currentQueueId = null;
+                $queueEditor.addClass('mi-hidden');
                 $step2.addClass('mi-hidden');
                 $step1.removeClass('mi-hidden');
                 $stepLabel.text('Upload [1/2]');
@@ -280,7 +333,31 @@
                     rd +
                     '" /></td>' +
                     '<td class="mi-inline-actions">' +
-                    '<button type="button" class="button-link-delete mi-q-remove" title="Remove"><span class="dashicons dashicons-trash"></span></button>' +
+                    '<div class="mi-queue-actions" role="group" aria-label="' +
+                    esc(MIAdmin.i18n.stagedArticleActions || 'Staged article actions') +
+                    '">' +
+                    '<button type="button" class="button mi-queue-action-btn mi-q-view" title="' +
+                    esc(MIAdmin.i18n.viewStaged || 'View') +
+                    '" aria-label="' +
+                    esc(MIAdmin.i18n.viewStaged || 'View') +
+                    '">' +
+                    '<span class="dashicons dashicons-visibility" aria-hidden="true"></span>' +
+                    '</button>' +
+                    '<button type="button" class="button button-primary mi-queue-action-btn mi-q-edit" title="' +
+                    esc(MIAdmin.i18n.editStaged || 'Edit') +
+                    '" aria-label="' +
+                    esc(MIAdmin.i18n.editStaged || 'Edit') +
+                    '">' +
+                    '<span class="dashicons dashicons-edit" aria-hidden="true"></span>' +
+                    '</button>' +
+                    '<button type="button" class="button mi-queue-action-btn mi-q-remove" title="' +
+                    esc(MIAdmin.i18n.removeFromQueue || 'Remove from queue') +
+                    '" aria-label="' +
+                    esc(MIAdmin.i18n.removeFromQueue || 'Remove from queue') +
+                    '">' +
+                    '<span class="dashicons dashicons-trash" aria-hidden="true"></span>' +
+                    '</button>' +
+                    '</div>' +
                     '</td>' +
                     '</tr>';
                 $tbody.append(tr);
@@ -364,11 +441,81 @@
 
         $tbody.on('click', '.mi-q-remove', function () {
             var $tr = $(this).closest('tr');
-            ajax('mi_remove_queue_item', { id: $tr.data('id') }).done(function (res) {
+            var rid = $tr.data('id');
+            if (currentQueueId && String(currentQueueId) === String(rid)) {
+                currentQueueId = null;
+                $queueEditor.addClass('mi-hidden');
+            }
+            ajax('mi_remove_queue_item', { id: rid }).done(function (res) {
                 if (res.success) {
                     renderQueue(res.data.queue || []);
                 }
             });
+        });
+
+        function openQueueEditor(id, viewOnly) {
+            ajax('mi_get_import_queue_item', { id: id }).done(function (res) {
+                if (!res.success || !res.data.item) {
+                    return;
+                }
+                fillQueueEditorFromItem(res.data.item, viewOnly);
+                $queueEditor.removeClass('mi-hidden');
+            });
+        }
+
+        $tbody.on('click', '.mi-q-view', function () {
+            openQueueEditor($(this).closest('tr').data('id'), true);
+        });
+
+        $tbody.on('click', '.mi-q-edit', function () {
+            openQueueEditor($(this).closest('tr').data('id'), false);
+        });
+
+        $queueEditor.on('change', 'input[name="mi-q-e-vis"]', function () {
+            syncQueuePasswordField();
+        });
+
+        $('#mi-q-e-save').on('click', function () {
+            if (!currentQueueId) {
+                return;
+            }
+            var parsedMd = parseStructuredMd($('#mi-q-e-md').val());
+            if (!parsedMd.ok) {
+                alert(parsedMd.message || MIAdmin.i18n.error);
+                return;
+            }
+            ajax('mi_save_import_queue_item', {
+                id: currentQueueId,
+                title: parsedMd.title,
+                keyword: $('#mi-q-e-keyword').val(),
+                slug: parsedMd.slug,
+                meta_description: parsedMd.meta_description,
+                markdown: parsedMd.markdown,
+                release_date: parsedMd.release_date,
+                visibility: parsedMd.visibility,
+                password: parsedMd.password,
+            }).done(function (res) {
+                if (res.success) {
+                    renderQueue(res.data.queue || []);
+                    var sid = currentQueueId;
+                    ajax('mi_get_import_queue_item', { id: sid }).done(function (r2) {
+                        if (r2.success && r2.data.item) {
+                            var wasView = $queueEditor.hasClass('mi-queue-view-mode');
+                            fillQueueEditorFromItem(r2.data.item, wasView);
+                        }
+                    });
+                    alert(MIAdmin.i18n.saved);
+                } else if (res.data && res.data.message) {
+                    alert(res.data.message);
+                } else {
+                    alert(MIAdmin.i18n.error);
+                }
+            });
+        });
+
+        $('#mi-q-e-close').on('click', function () {
+            currentQueueId = null;
+            $queueEditor.addClass('mi-hidden');
         });
 
         $('#mi-confirm-import').on('click', function () {

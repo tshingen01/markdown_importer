@@ -46,9 +46,15 @@ if (! defined('ABSPATH')) {
             </thead>
             <tbody></tbody>
         </table>
-        <p class="mi-actions-row">
-            <button type="button" class="button button-primary" id="mi-confirm-upgrade"><span class="dashicons dashicons-yes"></span> <?php esc_html_e('Confirm', 'markdown-importer'); ?></button>
-            <button type="button" class="button mi-btn-danger" id="mi-cancel-upgrade"><span class="dashicons dashicons-trash"></span> <?php esc_html_e('Cancel', 'markdown-importer'); ?></button>
-        </p>
+        <div class="mi-actions-row">
+            <button type="button" class="button button-primary mi-btn-confirm" id="mi-confirm-upgrade">
+                <span class="dashicons dashicons-yes mi-actions-row-icon" aria-hidden="true"></span>
+                <span class="mi-actions-row-label"><?php esc_html_e('Confirm', 'markdown-importer'); ?></span>
+            </button>
+            <button type="button" class="button mi-btn-danger" id="mi-cancel-upgrade">
+                <span class="dashicons dashicons-dismiss mi-actions-row-icon" aria-hidden="true"></span>
+                <span class="mi-actions-row-label"><?php esc_html_e('Cancel', 'markdown-importer'); ?></span>
+            </button>
+        </div>
     </div>
 </div>

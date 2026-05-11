@@ -54,9 +54,58 @@ Intro text...
             <tbody></tbody>
         </table>
 
-        <p class="mi-actions-row">
-            <button type="button" class="button button-primary mi-btn-confirm" id="mi-confirm-import"><span class="dashicons dashicons-yes"></span> <?php esc_html_e('Confirm', 'markdown-importer'); ?></button>
-            <button type="button" class="button mi-btn-danger" id="mi-cancel-import"><span class="dashicons dashicons-trash"></span> <?php esc_html_e('Cancel', 'markdown-importer'); ?></button>
-        </p>
+        <div id="mi-queue-editor" class="mi-article-editor mi-queue-editor mi-hidden">
+            <hr />
+            <h3><?php esc_html_e('View / edit staged article', 'markdown-importer'); ?></h3>
+            <p class="description" id="mi-queue-editor-filename-wrap">
+                <?php esc_html_e('File:', 'markdown-importer'); ?>
+                <code id="mi-q-filename"></code>
+            </p>
+            <div class="mi-editor-grid">
+                <div class="mi-editor-main">
+                    <label class="mi-label"><?php esc_html_e('Title', 'markdown-importer'); ?></label>
+                    <input type="text" class="widefat" id="mi-q-e-title" />
+
+                    <label class="mi-label"><?php esc_html_e('Keyword', 'markdown-importer'); ?></label>
+                    <input type="text" class="widefat" id="mi-q-e-keyword" placeholder="<?php esc_attr_e('Unique per article', 'markdown-importer'); ?>" />
+
+                    <label class="mi-label"><?php esc_html_e('URL Slug', 'markdown-importer'); ?></label>
+                    <input type="text" class="widefat" id="mi-q-e-slug" />
+
+                    <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
+                    <textarea class="widefat" rows="2" id="mi-q-e-meta"></textarea>
+
+                    <label class="mi-label"><?php esc_html_e('Text Editor', 'markdown-importer'); ?></label>
+                    <textarea class="widefat mi-code" rows="16" id="mi-q-e-md"></textarea>
+                </div>
+                <div class="mi-editor-side">
+                    <div class="mi-side-box">
+                        <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>: <br />
+                        <label><input type="radio" name="mi-q-e-vis" value="draft" /> <?php esc_html_e('Draft', 'markdown-importer'); ?></label><br />
+                        <label><input type="radio" name="mi-q-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label><br />
+                        <label><input type="radio" name="mi-q-e-vis" value="publish" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
+                        <label class="mi-label" for="mi-q-e-password"><?php esc_html_e('Public password (optional)', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-q-e-password" />
+                    </div>
+                    <label class="mi-label"><?php esc_html_e('Release date', 'markdown-importer'); ?></label>
+                    <input type="text" class="widefat" id="mi-q-e-release" placeholder="now or YYYY-MM-DD" />
+                    <div class="mi-side-actions">
+                        <button type="button" class="button button-primary" id="mi-q-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
+                        <button type="button" class="button" id="mi-q-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mi-actions-row">
+            <button type="button" class="button button-primary mi-btn-confirm" id="mi-confirm-import">
+                <span class="dashicons dashicons-yes mi-actions-row-icon" aria-hidden="true"></span>
+                <span class="mi-actions-row-label"><?php esc_html_e('Confirm', 'markdown-importer'); ?></span>
+            </button>
+            <button type="button" class="button mi-btn-danger" id="mi-cancel-import">
+                <span class="dashicons dashicons-dismiss mi-actions-row-icon" aria-hidden="true"></span>
+                <span class="mi-actions-row-label"><?php esc_html_e('Discard', 'markdown-importer'); ?></span>
+            </button>
+        </div>
     </div>
 </div>
