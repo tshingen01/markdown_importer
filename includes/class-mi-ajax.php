@@ -377,16 +377,87 @@ class MI_Ajax
     {
         self::auth();
         $search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
-        $q = new WP_Query(
-            [
-                'post_type' => MI_Post_Type::POST_TYPE,
-                'post_status' => MI_Article_Service::overview_statuses(),
-                'posts_per_page' => 200,
-                'orderby' => 'ID',
-                'order' => 'DESC',
-                's' => $search,
-            ]
-        );
+        $search = trim((string) $search);
+
+        $ptype = MI_Post_Type::POST_TYPE;
+        $statuses = MI_Article_Service::overview_statuses();
+        $base = [
+            'post_type' => $ptype,
+            'post_status' => $statuses,
+            'posts_per_page' => 200,
+            'orderby' => 'ID',
+            'order' => 'DESC',
+        ];
+
+        if ($search === '') {
+            $q = new WP_Query($base);
+        } else {
+            global $wpdb;
+            $in_status = "'" . implode("','", array_map('esc_sql', $statuses)) . "'";
+
+            $text_q = new WP_Query(
+                array_merge(
+                    $base,
+                    [
+                        's' => $search,
+                        'fields' => 'ids',
+                        'no_found_rows' => true,
+                    ]
+                )
+            );
+            $text_ids = is_array($text_q->posts) ? array_map('intval', $text_q->posts) : [];
+
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $meta_key = MI_Article_Service::META_KEYWORD;
+
+            $kw_ids = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT pm.post_id FROM {$wpdb->postmeta} pm
+                    INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                    WHERE pm.meta_key = %s AND pm.meta_value LIKE %s
+                    AND p.post_type = %s AND p.post_status IN ($in_status)",
+                    $meta_key,
+                    $like,
+                    $ptype
+                )
+            );
+
+            $slug_ids = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT ID FROM {$wpdb->posts}
+                    WHERE post_type = %s AND post_status IN ($in_status) AND post_name LIKE %s",
+                    $ptype,
+                    $like
+                )
+            );
+
+            $ids = array_unique(
+                array_merge(
+                    $text_ids,
+                    array_map('intval', (array) $kw_ids),
+                    array_map('intval', (array) $slug_ids)
+                )
+            );
+            rsort($ids, SORT_NUMERIC);
+            $ids = array_slice($ids, 0, 200);
+
+            if ($ids === []) {
+                wp_send_json_success(['articles' => []]);
+                return;
+            }
+
+            $q = new WP_Query(
+                [
+                    'post_type' => $ptype,
+                    'post_status' => $statuses,
+                    'post__in' => $ids,
+                    'posts_per_page' => 200,
+                    'orderby' => 'post__in',
+                    'no_found_rows' => true,
+                ]
+            );
+        }
+
         $rows = [];
         while ($q->have_posts()) {
             $q->the_post();
