@@ -64,7 +64,7 @@ class MI_Admin
                 'upgradeTabUrl' => admin_url('admin.php?page=markdown-importer&tab=upgrade'),
                 'previewLabel' => __('Preview', 'markdown-importer'),
                 'i18n' => [
-                    'ctaNameRequired' => __('Enter a CTA name before saving (e.g. CTA_START).', 'markdown-importer'),
+                    'ctaNameRequired' => __('Enter a CTA name before saving (e.g. START).', 'markdown-importer'),
                     'confirmImport' => __('Import articles now?', 'markdown-importer'),
                     'confirmUpgrade' => __('Update articles now?', 'markdown-importer'),
                     'confirmDelete' => __('Delete this article permanently?', 'markdown-importer'),

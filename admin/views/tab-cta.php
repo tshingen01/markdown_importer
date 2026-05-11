@@ -9,7 +9,7 @@ if (! defined('ABSPATH')) {
         <div class="mi-cta-editor" id="mi-cta-editor">
             <p class="description mi-cta-hint mi-hidden" id="mi-cta-hint"><?php esc_html_e('New CTA: choose a unique name (used as [[CTA::name]]), add HTML/CSS, then click Save.', 'markdown-importer'); ?></p>
             <label class="mi-label"><?php esc_html_e('Name', 'markdown-importer'); ?></label>
-            <input type="text" class="widefat" id="mi-cta-name" placeholder="CTA_START" />
+            <input type="text" class="widefat" id="mi-cta-name" placeholder="START" />
 
             <label class="mi-label"><?php esc_html_e('HTML / CSS', 'markdown-importer'); ?></label>
             <textarea class="widefat mi-code" rows="18" id="mi-cta-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>

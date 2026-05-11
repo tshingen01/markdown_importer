@@ -21,6 +21,37 @@ class MI_Cta
         return isset($all[$key]) ? $all[$key] : null;
     }
 
+    /**
+     * Find [[CTA::name]] tags in markdown and persist stub entries for names that do not exist yet.
+     */
+    public static function ensure_from_markdown($markdown)
+    {
+        $markdown = (string) $markdown;
+        if ($markdown === '') {
+            return;
+        }
+        if (! preg_match_all('/\[\[CTA::([^\]]+)\]\]/iu', $markdown, $matches, PREG_SET_ORDER)) {
+            return;
+        }
+        foreach ($matches as $row) {
+            $name = isset($row[1]) ? trim((string) $row[1]) : '';
+            if ($name === '') {
+                continue;
+            }
+            if (self::get_by_name($name) !== null) {
+                continue;
+            }
+            $stub = sprintf(
+                '<p class="mi-cta mi-cta-placeholder">%s</p>',
+                esc_html__(
+                    'This call-to-action block is empty. Edit it under Markdown Importer → CTA Buttons.',
+                    'markdown-importer'
+                )
+            );
+            self::save($name, $stub);
+        }
+    }
+
     public static function save($name, $code)
     {
         $all = self::all();
