@@ -60,11 +60,9 @@ class MI_Renderer
     {
         $work = (string) $markdown;
         $work = self::replace_cta_tags($work);
-        $work = self::replace_image_tags($work, $post_id);
+        $work = self::replace_image_tags($work);
         $work = self::replace_external_links_with_targets($work);
-        $work = self::replace_article_keyword_links_three_part($work);
         $work = self::replace_article_keyword_links_with_targets($work);
-        $work = self::replace_article_keyword_links($work, (int) $post_id);
         if (! class_exists('Parsedown')) {
             return '<div class="mi-article"><pre>' . esc_html($work) . '</pre></div>';
         }
@@ -107,8 +105,12 @@ class MI_Renderer
         $allowed['style']['media'] = true;
         return $allowed;
     }
-
-    private static function replace_image_tags($text, $post_id)
+    /**
+     * [[image::alt text::filename.ext]] — full form (only this [[image::…]] prefix is an image, never [[keyword::…]]).
+     * Alt optional: [[image::::filename.ext]] (empty alt: inner begins with "::", then basename).
+     * Shorthand: [[image::filename.ext]] when the basename contains no "::" (whole inner is the file).
+     */
+    private static function replace_image_tags($text)
     {
         $cb = function ($file, $alt) {
             $file = trim($file);
@@ -122,25 +124,30 @@ class MI_Renderer
                 $url = wp_get_attachment_url($att);
             }
             if (! $url) {
-                return '<span class="mi-missing-image">' . esc_html($file) . '</span>';
+                return '<img src="" alt="' . esc_attr($alt) . '" class="mi-inline-image" loading="lazy" />';
             }
             return '<img src="' . esc_url($url) . '" alt="' . esc_attr($alt) . '" class="mi-inline-image" loading="lazy" />';
         };
-        $text = preg_replace_callback(
-            '/\[\[image::([^:]+)::([^:]+)::([^\]]+)\]\]/u',
+        return preg_replace_callback(
+            '/\[\[(?i)image::([^\]]+)\]\]/u',
             function ($m) use ($cb) {
-                return $cb($m[3], $m[2]);
+                $inner = trim($m[1]);
+                if ($inner === '') {
+                    return $m[0];
+                }
+                if (strpos($inner, '::') === false) {
+                    return $cb($inner, '');
+                }
+                $parts = explode('::', $inner, 2);
+                $alt = isset($parts[0]) ? trim($parts[0]) : '';
+                $file = isset($parts[1]) ? trim($parts[1]) : '';
+                if ($file === '') {
+                    return $m[0];
+                }
+                return $cb($file, $alt);
             },
             $text
         );
-        $text = preg_replace_callback(
-            '/\[\[image::([^:]+):::([^\]]+)\]\]/u',
-            function ($m) use ($cb) {
-                return $cb($m[2], '');
-            },
-            $text
-        );
-        return $text;
     }
 
     private static function find_attachment_by_basename($filename)
@@ -166,7 +173,6 @@ class MI_Renderer
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
-                // var_dump($cta['code']);
                 return wp_kses(self::sanitize_output_html($cta['code']), self::allowed_html());
             },
             $text
@@ -175,34 +181,48 @@ class MI_Renderer
 
     /**
      * [[keyword::title::target]] → internal mi_article link (runs after CTA / image / external).
-     * Example: [[why-should-i-invest-in-crypto::Invest in Bitcoin now::self]]
+     * Example: [[why-should-i-invest-in-crypto::Invest in Bitcoin now::self]], [[Bitcoin::Bitcoin::self]]
+     *
+     * Uses first/last "::" inside the brackets so the label may contain "::" and the keyword may contain ":".
      */
-    private static function replace_article_keyword_links_three_part($text)
+    private static function replace_article_keyword_links_with_targets($text)
     {
         return preg_replace_callback(
-            '/\[\[([^\[\]:]+)::(.+?)::([^\]]+)\]\]/u',
+            '/\[\[([^\]]+)\]\]/u',
             function ($m) {
-                $html = self::build_article_keyword_link_html(trim($m[1]), trim($m[3]), trim($m[2]));
+                $inner = trim($m[1]);
+                if ($inner === '' || substr_count($inner, '::') < 2) {
+                    return $m[0];
+                }
+                $lower = strtolower($inner);
+                if (strpos($lower, 'cta::') === 0 || strpos($lower, 'image::') === 0) {
+                    return $m[0];
+                }
+                if (preg_match('/^(?:https?:\/\/|mailto:)/i', $inner)) {
+                    return $m[0];
+                }
+                $last = strrpos($inner, '::');
+                if ($last === false) {
+                    return $m[0];
+                }
+                $target = trim(substr($inner, $last + 2));
+                $before = trim(substr($inner, 0, $last));
+                $first = strpos($before, '::');
+                if ($first === false || $first === 0) {
+                    return $m[0];
+                }
+                $key = trim(substr($before, 0, $first));
+                $label = trim(substr($before, $first + 2));
+                if ($key === '' || $label === '' || $target === '') {
+                    return $m[0];
+                }
+                $html = self::build_article_keyword_link_html($key, $target, $label);
                 return $html !== '' ? $html : $m[0];
             },
             $text
         );
     }
 
-    /**
-     * [[Keyword::target]] → link using the article title as label (legacy two-part form).
-     */
-    private static function replace_article_keyword_links_with_targets($text)
-    {
-        return preg_replace_callback(
-            '/\[\[([^:\[\]]+)::([^\]]+)\]\]/u',
-            function ($m) {
-                $html = self::build_article_keyword_link_html(trim($m[1]), trim($m[2]), null);
-                return $html !== '' ? $html : $m[0];
-            },
-            $text
-        );
-    }
 
     /**
      * @param string|null $link_label Explicit anchor text; null = use post title or keyword.
@@ -231,38 +251,6 @@ class MI_Renderer
             ? $link_label
             : ($title !== '' ? $title : $key);
         return self::build_link_html($url, $label, $raw_target);
-    }
-
-    /**
-     * [[Keyword]] -> link to the matching mi_article.
-     */
-    private static function replace_article_keyword_links($text, $current_post_id)
-    {
-        return preg_replace_callback(
-            '/\[\[([^:\[\]]+)\]\]/u',
-            function ($m) use ($current_post_id) {
-                $key = trim($m[1]);
-                if ($key === '') {
-                    return $m[0];
-                }
-                $pid = MI_Article_Service::find_post_id_by_keyword($key, 0);
-                if ($pid <= 0) {
-                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
-                }
-                $post = get_post($pid);
-                if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
-                    return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
-                }
-                if ($post->post_status === 'private' && ! self::can_view_private_articles()) {
-                    return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
-                }
-                $url = get_permalink($pid);
-                $title = get_the_title($pid);
-                $label = $title !== '' ? $title : $key;
-                return '<a href="' . esc_url($url) . '" class="mi-article-link">' . esc_html($label) . '</a>';
-            },
-            $text
-        );
     }
 
     /**
