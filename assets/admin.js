@@ -475,36 +475,87 @@
             syncQueuePasswordField();
         });
 
+        /**
+         * Header lines 1–5 must follow the dedicated inputs (title, slug, meta, release, visibility).
+         * Only the markdown body is taken from lines 6+ of the textarea.
+         */
+        function buildPayloadForImportQueueSave() {
+            var cur = parseStructuredMd($('#mi-q-e-md').val());
+            if (!cur.ok) {
+                return cur;
+            }
+            var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
+                vis = 'private';
+            }
+            var pwd = vis === 'publish' ? String($('#mi-q-e-password').val() || '') : '';
+            var releaseVal = String($('#mi-q-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
+            var slug = String($('#mi-q-e-slug').val() || '').trim();
+            var title = String($('#mi-q-e-title').val() || '').trim();
+            var meta = String($('#mi-q-e-meta').val() || '');
+            var kw = String($('#mi-q-e-keyword').val() || '').trim();
+            if (!kw) {
+                return { ok: false, message: MIAdmin.i18n.keywordRequired };
+            }
+            if (!slug || !title) {
+                return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
+            }
+            var mergedArticle = {
+                release_date: releaseVal,
+                visibility: vis,
+                password: pwd,
+                meta_description: meta,
+                slug: slug,
+                title: title,
+                markdown: cur.markdown,
+            };
+            $('#mi-q-e-md').val(buildStructuredMd(mergedArticle));
+            var parsedMd = parseStructuredMd($('#mi-q-e-md').val());
+            if (!parsedMd.ok) {
+                return parsedMd;
+            }
+            return {
+                ok: true,
+                payload: {
+                    id: currentQueueId,
+                    title: parsedMd.title,
+                    keyword: kw,
+                    slug: parsedMd.slug,
+                    meta_description: parsedMd.meta_description,
+                    markdown: parsedMd.markdown,
+                    release_date: parsedMd.release_date,
+                    visibility: parsedMd.visibility,
+                    password: parsedMd.password,
+                },
+            };
+        }
+
         $('#mi-q-e-save').on('click', function () {
             if (!currentQueueId) {
                 return;
             }
-            var parsedMd = parseStructuredMd($('#mi-q-e-md').val());
-            if (!parsedMd.ok) {
-                alert(parsedMd.message || MIAdmin.i18n.error);
+            var built = buildPayloadForImportQueueSave();
+            if (!built.ok) {
+                alert(built.message || MIAdmin.i18n.error);
                 return;
             }
-            ajax('mi_save_import_queue_item', {
-                id: currentQueueId,
-                title: parsedMd.title,
-                keyword: $('#mi-q-e-keyword').val(),
-                slug: parsedMd.slug,
-                meta_description: parsedMd.meta_description,
-                markdown: parsedMd.markdown,
-                release_date: parsedMd.release_date,
-                visibility: parsedMd.visibility,
-                password: parsedMd.password,
-            }).done(function (res) {
+            ajax('mi_save_import_queue_item', built.payload).done(function (res) {
                 if (res.success) {
                     renderQueue(res.data.queue || []);
                     var sid = currentQueueId;
-                    ajax('mi_get_import_queue_item', { id: sid }).done(function (r2) {
-                        if (r2.success && r2.data.item) {
-                            var wasView = $queueEditor.hasClass('mi-queue-view-mode');
-                            fillQueueEditorFromItem(r2.data.item, wasView);
-                        }
-                    });
-                    alert(MIAdmin.i18n.saved);
+                    var wasView = $queueEditor.hasClass('mi-queue-view-mode');
+                    ajax('mi_get_import_queue_item', { id: sid })
+                        .done(function (r2) {
+                            if (r2.success && r2.data.item) {
+                                fillQueueEditorFromItem(r2.data.item, wasView);
+                            }
+                        })
+                        .always(function () {
+                            alert(MIAdmin.i18n.saved);
+                        });
                 } else if (res.data && res.data.message) {
                     alert(res.data.message);
                 } else {

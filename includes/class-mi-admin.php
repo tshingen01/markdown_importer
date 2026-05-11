@@ -74,6 +74,8 @@ class MI_Admin
                     'confirmDelete' => __('Delete this article permanently?', 'markdown-importer'),
                     'confirmClear' => __('Discard staged files?', 'markdown-importer'),
                     'saved' => __('Saved.', 'markdown-importer'),
+                    'keywordRequired' => __('Keyword is required.', 'markdown-importer'),
+                    'slugTitleRequired' => __('URL slug and title are required.', 'markdown-importer'),
                     'error' => __('Something went wrong.', 'markdown-importer'),
                 ],
             ]
