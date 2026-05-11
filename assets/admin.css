@@ -525,6 +525,7 @@
     border: 1px solid #dde3ea;
     border-radius: 8px;
     background: #fff;
+    overflow: visible;
 }
 
 .mi-editor-grid {
@@ -539,8 +540,9 @@
 }
 
 .mi-editor-side {
-    width: 220px;
+    width: 272px;
     flex-shrink: 0;
+    overflow: visible;
 }
 
 .mi-label {
@@ -566,6 +568,75 @@
 .mi-side-box label {
     display: inline-block;
     margin-top: 6px;
+}
+
+/* Publish / schedule: wp.components Dropdown + DateTimePicker (editor-post-schedule classes) */
+.mi-wp-schedule {
+    position: relative;
+    margin-top: 4px;
+}
+
+.mi-wp-schedule > .mi-label {
+    margin-bottom: 6px;
+}
+
+.mi-wp-schedule-root .editor-post-schedule__dialog-toggle {
+    width: 97%;
+    justify-content: flex-start;
+    text-align: left;
+    height: auto;
+    min-height: 38px;
+    padding: 8px 10px;
+    flex-wrap: wrap;
+}
+
+.mi-wp-schedule-root .editor-post-schedule__dialog-toggle-label {
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.mi-wp-schedule-root .editor-post-schedule__dialog-toggle-schedule {
+    flex: 1;
+    min-width: 0;
+    font-weight: 400;
+    color: #50575e;
+}
+
+.mi-wp-schedule-root .mi-schedule-toggle-chevron {
+    flex-shrink: 0;
+    margin-left: 6px;
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: #646970;
+}
+
+.mi-schedule-popover.components-popover {
+    z-index: 100050 !important;
+}
+
+.mi-editor-post-schedule-dropdown-content .components-popover__content {
+    width: auto;
+    min-width: 272px;
+    max-width: min(360px, calc(100vw - 48px));
+}
+
+.mi-wp-datetime-picker-wrap {
+    padding: 8px 12px 4px;
+}
+
+.mi-schedule-dropdown-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 12px 12px;
+    border-top: 1px solid #f0f0f1;
+}
+
+.mi-schedule-fallback {
+    margin: 12px;
+    color: #646970;
 }
 
 .mi-cta-layout {

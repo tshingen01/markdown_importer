@@ -9,6 +9,15 @@
         return $('<div/>').text(s == null ? '' : String(s)).html();
     }
 
+    /** Sync React schedule UI when hidden #mi-e-release / #mi-q-e-release changes from jQuery. */
+    var MIReleaseScheduler = {
+        sync: function (hiddenId) {
+            document.dispatchEvent(
+                new CustomEvent('mi-release-scheduler-sync', { detail: { id: hiddenId } })
+            );
+        },
+    };
+
     function renderEmptyTableRow($tbody, colspan, message) {
         $tbody.html('<tr class="mi-empty-row"><td colspan="' + colspan + '">' + esc(message) + '</td></tr>');
     }
@@ -265,11 +274,12 @@
             $queueEditor.toggleClass('mi-queue-view-mode', ro);
             $('#mi-q-e-save').toggle(!ro);
             $(
-                '#mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-release, #mi-q-e-password'
+                '#mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-password'
             )
                 .prop('readonly', ro)
                 .prop('disabled', false);
             $('input[name="mi-q-e-vis"]').prop('disabled', ro);
+            $queueEditor.find('.mi-wp-schedule').attr('data-readonly', ro ? '1' : '');
             if (ro) {
                 $('#mi-q-e-password').prop('disabled', false);
             }
@@ -288,6 +298,7 @@
             $('#mi-q-e-meta').val(it.meta_description || '');
             $('#mi-q-e-md').val(buildStructuredMd(it));
             $('#mi-q-e-release').val(it.release_date || 'now');
+            MIReleaseScheduler.sync('mi-q-e-release');
             $('#mi-q-e-password').val(it.password || '');
             var v = String(it.visibility || 'private').toLowerCase();
             if (v !== 'publish' && v !== 'private' && v !== 'draft') {
@@ -730,6 +741,83 @@
             });
         });
 
+        /**
+         * Lines 1–5 of structured MD come from the side/top inputs; body from textarea lines 6+.
+         */
+        function buildPayloadForArticleSave() {
+            var cur = parseStructuredMd($('#mi-e-md').val());
+            if (!cur.ok) {
+                return cur;
+            }
+            var vis = $('input[name="mi-e-vis"]:checked').val() || 'private';
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
+                vis = 'private';
+            }
+            var pwd = vis === 'publish' ? String($('#mi-e-password').val() || '') : '';
+            var releaseVal = String($('#mi-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
+            var slug = String($('#mi-e-slug').val() || '').trim();
+            var title = String($('#mi-e-title').val() || '').trim();
+            var meta = String($('#mi-e-meta').val() || '');
+            var kw = String($('#mi-e-keyword').val() || '').trim();
+            if (!kw) {
+                return { ok: false, message: MIAdmin.i18n.keywordRequired };
+            }
+            if (!slug || !title) {
+                return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
+            }
+            var mergedArticle = {
+                release_date: releaseVal,
+                visibility: vis,
+                password: pwd,
+                meta_description: meta,
+                slug: slug,
+                title: title,
+                markdown: cur.markdown,
+            };
+            $('#mi-e-md').val(buildStructuredMd(mergedArticle));
+            var parsedMd = parseStructuredMd($('#mi-e-md').val());
+            if (!parsedMd.ok) {
+                return parsedMd;
+            }
+            return {
+                ok: true,
+                payload: {
+                    id: currentId,
+                    title: parsedMd.title,
+                    keyword: kw,
+                    slug: parsedMd.slug,
+                    meta_description: parsedMd.meta_description,
+                    markdown: parsedMd.markdown,
+                    release_date: parsedMd.release_date,
+                    visibility: parsedMd.visibility,
+                    password: parsedMd.password,
+                },
+            };
+        }
+
+        function refillArticleEditorFromPayload(a) {
+            if (!a) {
+                return;
+            }
+            $('#mi-e-title').val(a.title || '');
+            $('#mi-e-keyword').val(a.keyword || '');
+            $('#mi-e-slug').val(a.slug || '');
+            $('#mi-e-meta').val(a.meta_description || '');
+            $('#mi-e-md').val(buildStructuredMd(a));
+            $('#mi-e-release').val(a.release_date || 'now');
+            MIReleaseScheduler.sync('mi-e-release');
+            $('#mi-e-password').val(a.password || '');
+            var v = String(a.visibility || 'private').toLowerCase();
+            if (v !== 'publish' && v !== 'private' && v !== 'draft') {
+                v = 'private';
+            }
+            $('input[name="mi-e-vis"][value="' + v + '"]').prop('checked', true);
+            syncPasswordField();
+        }
+
         $tbody.on('click', '.mi-a-edit', function () {
             var id = $(this).closest('tr').data('id');
             ajax('mi_get_article', { id: id }).done(function (res) {
@@ -738,15 +826,7 @@
                 }
                 var a = res.data.article;
                 currentId = a.id;
-                $('#mi-e-title').val(a.title);
-                $('#mi-e-keyword').val(a.keyword || '');
-                $('#mi-e-slug').val(a.slug);
-                $('#mi-e-meta').val(a.meta_description);
-                $('#mi-e-md').val(buildStructuredMd(a));
-                $('#mi-e-release').val(a.release_date);
-                $('#mi-e-password').val(a.password || '');
-                $('input[name="mi-e-vis"][value="' + (a.visibility || 'private') + '"]').prop('checked', true);
-                syncPasswordField();
+                refillArticleEditorFromPayload(a);
                 $editor.removeClass('mi-hidden');
             });
         });
@@ -759,30 +839,14 @@
             if (!currentId) {
                 return;
             }
-            var parsedMd = parseStructuredMd($('#mi-e-md').val());
-            if (!parsedMd.ok) {
-                alert(parsedMd.message || MIAdmin.i18n.error);
+            var built = buildPayloadForArticleSave();
+            if (!built.ok) {
+                alert(built.message || MIAdmin.i18n.error);
                 return;
             }
-            ajax('mi_save_article', {
-                id: currentId,
-                title: parsedMd.title,
-                keyword: $('#mi-e-keyword').val(),
-                slug: parsedMd.slug,
-                meta_description: parsedMd.meta_description,
-                markdown: parsedMd.markdown,
-                release_date: parsedMd.release_date,
-                visibility: parsedMd.visibility,
-                password: parsedMd.password,
-            }).done(function (res) {
+            ajax('mi_save_article', built.payload).done(function (res) {
                 if (res.success) {
-                    $('#mi-e-title').val(parsedMd.title);
-                    $('#mi-e-slug').val(parsedMd.slug);
-                    $('#mi-e-meta').val(parsedMd.meta_description);
-                    $('#mi-e-release').val(parsedMd.release_date);
-                    $('#mi-e-password').val(parsedMd.password);
-                    $('input[name="mi-e-vis"][value="' + parsedMd.visibility + '"]').prop('checked', true);
-                    syncPasswordField();
+                    refillArticleEditorFromPayload(res.data.article);
                     alert(MIAdmin.i18n.saved);
                     loadList($('#mi-articles-search').val());
                 } else if (res.data && res.data.message) {
@@ -1232,6 +1296,9 @@
     }
 
     $(function () {
+        if (typeof window.MiWpScheduleInit === 'function') {
+            window.MiWpScheduleInit();
+        }
         uploadTab();
         articlesTab();
         ctaTab();

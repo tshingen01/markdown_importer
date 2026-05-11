@@ -54,8 +54,10 @@ if (! defined('ABSPATH')) {
                     <label class="mi-label" for="mi-e-password"><?php esc_html_e('Public password (optional)', 'markdown-importer'); ?></label>
                     <input type="text" class="widefat" id="mi-e-password" />
                 </div>
-                <label class="mi-label"><?php esc_html_e('Release date', 'markdown-importer'); ?></label>
-                <input type="text" class="widefat" id="mi-e-release" placeholder="now or YYYY-MM-DD" />
+                <?php
+                $variant = 'article';
+                require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
+                ?>
                 <div class="mi-side-actions">
                     <button type="button" class="button button-primary" id="mi-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
                 </div>

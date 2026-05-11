@@ -87,8 +87,10 @@ Intro text...
                         <label class="mi-label" for="mi-q-e-password"><?php esc_html_e('Public password (optional)', 'markdown-importer'); ?></label>
                         <input type="text" class="widefat" id="mi-q-e-password" />
                     </div>
-                    <label class="mi-label"><?php esc_html_e('Release date', 'markdown-importer'); ?></label>
-                    <input type="text" class="widefat" id="mi-q-e-release" placeholder="now or YYYY-MM-DD" />
+                    <?php
+                    $variant = 'queue';
+                    require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
+                    ?>
                     <div class="mi-side-actions">
                         <button type="button" class="button button-primary" id="mi-q-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
                         <button type="button" class="button" id="mi-q-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>

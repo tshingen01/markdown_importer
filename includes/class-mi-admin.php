@@ -41,6 +41,7 @@ class MI_Admin
         if ($hook !== 'toplevel_page_markdown-importer') {
             return;
         }
+        wp_enqueue_style('dashicons');
         wp_enqueue_code_editor(['type' => 'text/html']);
         wp_enqueue_style(
             'mi-admin',
@@ -48,13 +49,28 @@ class MI_Admin
             [],
             MI_VERSION
         );
-        wp_enqueue_script(
-            'mi-admin',
-            MI_PLUGIN_URL . 'assets/admin.js',
-            ['jquery', 'code-editor'],
+        wp_register_script(
+            'mi-wp-schedule',
+            MI_PLUGIN_URL . 'assets/mi-wp-schedule.js',
+            ['wp-element', 'wp-components', 'wp-date', 'wp-i18n'],
             MI_VERSION,
             true
         );
+        wp_enqueue_script('mi-wp-schedule');
+        if (wp_style_is('wp-components', 'registered')) {
+            wp_enqueue_style('wp-components');
+        }
+        if (wp_style_is('wp-edit-post', 'registered')) {
+            wp_enqueue_style('wp-edit-post');
+        }
+        wp_enqueue_script(
+            'mi-admin',
+            MI_PLUGIN_URL . 'assets/admin.js',
+            ['jquery', 'code-editor', 'mi-wp-schedule'],
+            MI_VERSION,
+            true
+        );
+
         wp_localize_script(
             'mi-admin',
             'MIAdmin',
@@ -76,6 +92,11 @@ class MI_Admin
                     'saved' => __('Saved.', 'markdown-importer'),
                     'keywordRequired' => __('Keyword is required.', 'markdown-importer'),
                     'slugTitleRequired' => __('URL slug and title are required.', 'markdown-importer'),
+                    'publishImmediately' => __('Immediately', 'markdown-importer'),
+                    'publishToggleLabel' => __('Publish on:', 'markdown-importer'),
+                    'scheduleNowBtn' => __('Now', 'markdown-importer'),
+                    'scheduleConfirmBtn' => __('Schedule', 'markdown-importer'),
+                    'schedulePickerUnavailable' => __('Date picker could not load.', 'markdown-importer'),
                     'error' => __('Something went wrong.', 'markdown-importer'),
                 ],
             ]
