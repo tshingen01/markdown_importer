@@ -142,6 +142,9 @@
         if (vis === 'draft') {
             return '[[DRAFT]]';
         }
+        if (vis === 'future') {
+            return pwd ? '[[SCHEDULED::' + pwd + ']]' : '[[SCHEDULED]]';
+        }
         return '[[PRIVATE]]';
     }
 
@@ -188,6 +191,13 @@
         if (/^DRAFT$/i.test(inner)) {
             return { visibility: 'draft', password: '' };
         }
+        var ps = inner.match(/^SCHEDULED::(.+)$/i);
+        if (ps) {
+            return { visibility: 'future', password: $.trim(ps[1]) };
+        }
+        if (/^SCHEDULED$/i.test(inner)) {
+            return { visibility: 'future', password: '' };
+        }
         if (/^PUBLIC$/i.test(inner)) {
             return { visibility: 'publish', password: '' };
         }
@@ -210,7 +220,7 @@
         }
         var vis = parseVisibilityToken(lines[1]);
         if (!vis) {
-            return { ok: false, message: 'Line 2 must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].' };
+            return { ok: false, message: 'Line 2 must be [[PRIVATE]], [[DRAFT]], [[SCHEDULED]], [[SCHEDULED::password]], [[PUBLIC]], or [[PUBLIC::password]].' };
         }
         var meta = $.trim(lines[2] || '');
         var slug = $.trim(lines[3] || '');
@@ -242,6 +252,10 @@
         if (s === 'publish') {
             return password ? 'Public (password)' : 'Public';
         }
+        if (s === 'future') {
+            var sched = MIAdmin.i18n && MIAdmin.i18n.visibilityScheduled ? MIAdmin.i18n.visibilityScheduled : 'Scheduled';
+            return password ? sched + ' (' + (MIAdmin.i18n.visibilityWithPassword || 'password') + ')' : sched;
+        }
         return 'Private';
     }
 
@@ -262,7 +276,7 @@
         function syncQueuePasswordField() {
             var vis = $('input[name="mi-q-e-vis"]:checked').val();
             var $pwd = $('#mi-q-e-password');
-            var isPublic = vis === 'publish';
+            var isPublic = vis === 'publish' || vis === 'future';
             $pwd.prop('disabled', !isPublic);
             if (!isPublic) {
                 $pwd.val('');
@@ -301,7 +315,7 @@
             MIReleaseScheduler.sync('mi-q-e-release');
             $('#mi-q-e-password').val(it.password || '');
             var v = String(it.visibility || 'private').toLowerCase();
-            if (v !== 'publish' && v !== 'private' && v !== 'draft') {
+            if (v !== 'publish' && v !== 'private' && v !== 'draft' && v !== 'future') {
                 v = 'private';
             }
             $('input[name="mi-q-e-vis"][value="' + v + '"]').prop('checked', true);
@@ -496,10 +510,10 @@
                 return cur;
             }
             var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
-            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
             }
-            var pwd = vis === 'publish' ? String($('#mi-q-e-password').val() || '') : '';
+            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-q-e-password').val() || '') : '';
             var releaseVal = String($('#mi-q-e-release').val() || '').trim();
             if (!releaseVal) {
                 releaseVal = 'now';
@@ -637,7 +651,7 @@
         function syncPasswordField() {
             var vis = $('input[name="mi-e-vis"]:checked').val();
             var $pwd = $('#mi-e-password');
-            var isPublic = vis === 'publish';
+            var isPublic = vis === 'publish' || vis === 'future';
             $pwd.prop('disabled', !isPublic);
             if (!isPublic) {
                 $pwd.val('');
@@ -657,7 +671,7 @@
                 }
                 rows.forEach(function (a) {
                     var vis = String(a.visibility || 'private').toLowerCase();
-                    if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
+                    if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                         vis = 'private';
                     }
                     var visText = visibilityLabel(vis, a.password || '');
@@ -676,12 +690,17 @@
                         '</td>' +
                         '<td class="mi-visibility-box">' +
                         '<select class="mi-vis-select">' +
-                        '<option value="private" ' +
-                        (vis === 'private' ? 'selected' : '') +
-                        '>Private</option>' +
                         '<option value="draft" ' +
                         (vis === 'draft' ? 'selected' : '') +
                         '>Draft</option>' +
+                        '<option value="private" ' +
+                        (vis === 'private' ? 'selected' : '') +
+                        '>Private</option>' +
+                        '<option value="future" ' +
+                        (vis === 'future' ? 'selected' : '') +
+                        '>' +
+                        esc(MIAdmin.i18n.visibilityScheduled || 'Scheduled') +
+                        '</option>' +
                         '<option value="publish" ' +
                         (vis === 'publish' ? 'selected' : '') +
                         '>Public</option>' +
@@ -718,10 +737,34 @@
         });
 
         $tbody.on('change', '.mi-vis-select', function () {
-            var id = $(this).closest('tr').data('id');
+            var rowId = $(this).closest('tr').data('id');
             var status = $(this).val();
-            ajax('mi_set_visibility', { id: id, status: status }).done(function () {
+            function reloadTable() {
                 loadList($('#mi-articles-search').val());
+            }
+            ajax('mi_set_visibility', { id: rowId, status: status }).done(function (res) {
+                if (!res.success) {
+                    var msg =
+                        res.data && res.data.message
+                            ? res.data.message
+                            : MIAdmin.i18n.error || 'Error';
+                    window.alert(msg);
+                    reloadTable();
+                    return;
+                }
+                var editingThis =
+                    res.success && currentId != null && Number(currentId) === Number(rowId);
+                if (editingThis) {
+                    ajax('mi_get_article', { id: rowId })
+                        .done(function (r2) {
+                            if (r2.success && r2.data && r2.data.article) {
+                                refillArticleEditorFromPayload(r2.data.article);
+                            }
+                        })
+                        .always(reloadTable);
+                } else {
+                    reloadTable();
+                }
             });
         });
 
@@ -750,10 +793,10 @@
                 return cur;
             }
             var vis = $('input[name="mi-e-vis"]:checked').val() || 'private';
-            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft') {
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
             }
-            var pwd = vis === 'publish' ? String($('#mi-e-password').val() || '') : '';
+            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-e-password').val() || '') : '';
             var releaseVal = String($('#mi-e-release').val() || '').trim();
             if (!releaseVal) {
                 releaseVal = 'now';
@@ -811,7 +854,7 @@
             MIReleaseScheduler.sync('mi-e-release');
             $('#mi-e-password').val(a.password || '');
             var v = String(a.visibility || 'private').toLowerCase();
-            if (v !== 'publish' && v !== 'private' && v !== 'draft') {
+            if (v !== 'publish' && v !== 'private' && v !== 'draft' && v !== 'future') {
                 v = 'private';
             }
             $('input[name="mi-e-vis"][value="' + v + '"]').prop('checked', true);

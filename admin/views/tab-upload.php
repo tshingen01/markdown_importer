@@ -31,7 +31,7 @@ Intro text...
 [[https://google.com::Google::blank]]
 [[CTA::START]]
             </textarea>
-            <p class="description"><?php esc_html_e('Lines 1–5: release, visibility, meta description, URL slug, title (no blank lines between). Line 6 onward: markdown body.', 'markdown-importer'); ?></p>
+            <p class="description"><?php esc_html_e('Lines 1–5: release, visibility, meta description, URL slug, title (no blank lines between). Line 6 onward: markdown body. Visibility line: [[PRIVATE]], [[DRAFT]], [[SCHEDULED]] or [[SCHEDULED::password]] (public at line 1 date when that date is in the future), [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer'); ?></p>
         </div>
     </div>
 
@@ -83,8 +83,9 @@ Intro text...
                         <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>: <br />
                         <label><input type="radio" name="mi-q-e-vis" value="draft" /> <?php esc_html_e('Draft', 'markdown-importer'); ?></label><br />
                         <label><input type="radio" name="mi-q-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label><br />
+                        <label><input type="radio" name="mi-q-e-vis" value="future" /> <?php esc_html_e('Scheduled', 'markdown-importer'); ?></label><br />
                         <label><input type="radio" name="mi-q-e-vis" value="publish" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
-                        <label class="mi-label" for="mi-q-e-password"><?php esc_html_e('Public password (optional)', 'markdown-importer'); ?></label>
+                        <label class="mi-label" for="mi-q-e-password"><?php esc_html_e('Password when public or scheduled (optional)', 'markdown-importer'); ?></label>
                         <input type="text" class="widefat" id="mi-q-e-password" />
                     </div>
                     <?php

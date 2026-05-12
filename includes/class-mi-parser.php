@@ -64,7 +64,7 @@ class MI_Parser
         $visibility = self::parse_visibility_line($line2);
         if (! $visibility['valid']) {
             $visibility_error = __('Invalid syntax.', 'markdown-importer');
-            $errors[] = __('Line 2 (visibility) must be [[PRIVATE]], [[DRAFT]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer') . ' ' . $visibility_error;
+            $errors[] = __('Line 2 (visibility) must be [[PRIVATE]], [[DRAFT]], [[SCHEDULED]], [[SCHEDULED::password]], [[PUBLIC]], or [[PUBLIC::password]].', 'markdown-importer') . ' ' . $visibility_error;
         } else {
             $visibility_status = $visibility['status'];
             $visibility_password = $visibility['password'];
@@ -142,7 +142,7 @@ class MI_Parser
     }
 
     /**
-     * @param string $visibility publish|private|draft
+     * @param string $visibility publish|private|draft|future
      */
     public static function visibility_token_from_status($visibility, $password)
     {
@@ -153,6 +153,9 @@ class MI_Parser
         }
         if ($vis === 'draft') {
             return '[[DRAFT]]';
+        }
+        if ($vis === 'future') {
+            return $pwd !== '' ? '[[SCHEDULED::' . $pwd . ']]' : '[[SCHEDULED]]';
         }
 
         return '[[PRIVATE]]';
@@ -249,6 +252,14 @@ class MI_Parser
         }
         if ($upper === 'DRAFT') {
             return ['valid' => true, 'raw' => $original, 'status' => 'draft', 'password' => ''];
+        }
+        if (preg_match('/^SCHEDULED::(.+)$/iu', $inner, $p)) {
+            $password = sanitize_text_field(trim($p[1]));
+
+            return ['valid' => true, 'raw' => $original, 'status' => 'future', 'password' => $password];
+        }
+        if ($upper === 'SCHEDULED') {
+            return ['valid' => true, 'raw' => $original, 'status' => 'future', 'password' => ''];
         }
         if ($upper === 'PUBLIC') {
             return ['valid' => true, 'raw' => $original, 'status' => 'publish', 'password' => ''];

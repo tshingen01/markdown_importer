@@ -322,11 +322,11 @@ class MI_Ajax
         $md = isset($_POST['markdown']) ? wp_unslash($_POST['markdown']) : '';
         $release = isset($_POST['release_date']) ? wp_unslash($_POST['release_date']) : 'now';
         $vis = isset($_POST['visibility']) ? sanitize_key(wp_unslash($_POST['visibility'])) : 'private';
-        if (! in_array($vis, ['publish', 'private', 'draft'], true)) {
+        if (! in_array($vis, ['publish', 'private', 'draft', 'future'], true)) {
             $vis = 'private';
         }
         $pwd = isset($_POST['password']) ? sanitize_text_field(wp_unslash($_POST['password'])) : '';
-        if ($vis !== 'publish') {
+        if ($vis !== 'publish' && $vis !== 'future') {
             $pwd = '';
         }
 
@@ -646,7 +646,7 @@ class MI_Ajax
                 'keyword' => (string) get_post_meta($pid, MI_Article_Service::META_KEYWORD, true),
                 'slug' => get_post_field('post_name', $pid),
                 'permalink' => get_permalink($pid),
-                'visibility' => in_array(get_post_status($pid), ['publish', 'private', 'draft'], true) ? get_post_status($pid) : 'private',
+                'visibility' => in_array(get_post_status($pid), ['publish', 'private', 'draft', 'future'], true) ? get_post_status($pid) : 'private',
                 'password' => (string) get_post_field('post_password', $pid),
                 'release_date' => MI_Staging::release_for_form((string) get_post_meta($pid, MI_Article_Service::META_RELEASE, true)),
             ];
@@ -711,8 +711,13 @@ class MI_Ajax
         if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
             wp_send_json_error(['message' => __('Article not found.', 'markdown-importer')]);
         }
-        MI_Article_Service::set_visibility($id, $status);
-        wp_send_json_success(['id' => $id, 'visibility' => $status]);
+        $r = MI_Article_Service::set_visibility($id, $status);
+        if (is_wp_error($r)) {
+            wp_send_json_error(['message' => $r->get_error_message()]);
+        }
+        $post = get_post($id);
+        $out_vis = $post ? (string) $post->post_status : $status;
+        wp_send_json_success(['id' => $id, 'visibility' => $out_vis]);
     }
 
     public static function list_ctas()

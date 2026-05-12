@@ -110,11 +110,15 @@ class MI_Article_Service
 
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
-        $status = isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private';
-        if (! in_array($status, ['publish', 'private', 'draft'], true)) {
-            $status = 'private';
+        $requested = isset($parsed['visibility']) ? (string) $parsed['visibility'] : 'private';
+        if (! in_array($requested, ['publish', 'private', 'draft', 'future'], true)) {
+            $requested = 'private';
         }
+        $status = self::resolve_wp_post_status($requested, $release);
         $password = isset($parsed['password']) ? (string) $parsed['password'] : '';
+        if ($status !== 'publish' && $status !== 'future') {
+            $password = '';
+        }
 
         $post_id = wp_insert_post(
             [
@@ -213,7 +217,7 @@ class MI_Article_Service
 
         $release = MI_Staging::parse_release_input($release_form_value);
         $post_date = MI_Staging::post_date_from_release($release);
-        $status = isset($parsed['visibility']) ? (string) $parsed['visibility'] : '';
+        $requested = isset($parsed['visibility']) ? (string) $parsed['visibility'] : '';
         $password = isset($parsed['password']) ? (string) $parsed['password'] : '';
 
         $update_data = [
@@ -224,10 +228,11 @@ class MI_Article_Service
             'post_date' => $post_date,
             'post_date_gmt' => get_gmt_from_date($post_date),
         ];
-        if (in_array($status, ['publish', 'private', 'draft'], true)) {
-            $update_data['post_status'] = $status;
+        if (in_array($requested, ['publish', 'private', 'draft', 'future'], true)) {
+            $update_data['post_status'] = self::resolve_wp_post_status($requested, $release);
         }
-        if ($status === 'publish') {
+        $status = isset($update_data['post_status']) ? (string) $update_data['post_status'] : '';
+        if ($status === 'publish' || $status === 'future') {
             $update_data['post_password'] = $password;
         } elseif ($status === 'private' || $status === 'draft') {
             $update_data['post_password'] = '';
@@ -311,7 +316,10 @@ class MI_Article_Service
         }
     }
 
-    private static function release_to_timestamp($release_normalized)
+    /**
+     * Unix timestamp for a normalized release string (site timezone). "now" → current time.
+     */
+    public static function release_to_timestamp($release_normalized)
     {
         $release = (string) $release_normalized;
         if ($release === '' || strtolower($release) === 'now') {
@@ -331,6 +339,24 @@ class MI_Article_Service
         }
     }
 
+    /**
+     * Map requested visibility + release to a WordPress post_status.
+     * "future" (Scheduled) becomes post_status future only when release is strictly in the future; otherwise publish.
+     */
+    public static function resolve_wp_post_status($requested_visibility, $release_normalized)
+    {
+        $requested_visibility = strtolower(trim((string) $requested_visibility));
+        if (! in_array($requested_visibility, ['publish', 'private', 'draft', 'future'], true)) {
+            return 'private';
+        }
+        if ($requested_visibility !== 'future') {
+            return $requested_visibility;
+        }
+        $ts = self::release_to_timestamp($release_normalized);
+
+        return $ts > time() ? 'future' : 'publish';
+    }
+
     public static function attach_meta($post_id, array $parsed, $release_normalized, array $image_map)
     {
         update_post_meta($post_id, self::META_KEYWORD, $parsed['keyword']);
@@ -341,20 +367,49 @@ class MI_Article_Service
         delete_post_meta($post_id, '_mi_image_map');
     }
 
+    /**
+     * @return true|WP_Error
+     */
     public static function set_visibility($post_id, $status)
     {
+        $post_id = (int) $post_id;
         $status = (string) $status;
+        if ($status === 'future') {
+            $rel = (string) get_post_meta($post_id, self::META_RELEASE, true);
+            $release = MI_Staging::parse_release_input($rel !== '' ? $rel : 'now');
+            if (self::release_to_timestamp($release) <= time()) {
+                return new WP_Error(
+                    'mi_scheduled_needs_future_release',
+                    __('Scheduled visibility requires a release date in the future. Update the release date first.', 'markdown-importer')
+                );
+            }
+            $post_date = MI_Staging::post_date_from_release($release);
+            $keep_pwd = (string) get_post_field('post_password', $post_id);
+            wp_update_post(
+                [
+                    'ID' => $post_id,
+                    'post_status' => 'future',
+                    'post_date' => $post_date,
+                    'post_date_gmt' => get_gmt_from_date($post_date),
+                    'post_password' => $keep_pwd,
+                ]
+            );
+
+            return true;
+        }
         if (! in_array($status, ['publish', 'private', 'draft'], true)) {
             $status = 'private';
         }
         $update = [
-            'ID' => (int) $post_id,
+            'ID' => $post_id,
             'post_status' => $status,
         ];
         if ($status !== 'publish') {
             $update['post_password'] = '';
         }
         wp_update_post($update);
+
+        return true;
     }
 
     /**
@@ -398,7 +453,7 @@ class MI_Article_Service
             'meta_description' => $meta,
             'markdown' => $md,
             'release_date' => MI_Staging::release_for_form($rel !== '' ? $rel : 'now'),
-            'visibility' => in_array($post->post_status, ['publish', 'private', 'draft'], true) ? $post->post_status : 'private',
+            'visibility' => in_array($post->post_status, ['publish', 'private', 'draft', 'future'], true) ? $post->post_status : 'private',
             'password' => (string) $post->post_password,
         ];
     }
@@ -417,9 +472,10 @@ class MI_Article_Service
         $keyword = trim((string) $keyword);
         $release = MI_Staging::parse_release_input($release_date);
         $post_date = MI_Staging::post_date_from_release($release);
-        $status = in_array($visibility, ['publish', 'private', 'draft'], true) ? $visibility : 'private';
+        $requested = in_array($visibility, ['publish', 'private', 'draft', 'future'], true) ? $visibility : 'private';
+        $status = self::resolve_wp_post_status($requested, $release);
         $password = (string) $password;
-        if ($status !== 'publish') {
+        if ($status !== 'publish' && $status !== 'future') {
             $password = '';
         }
 

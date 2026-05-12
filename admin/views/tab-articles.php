@@ -50,8 +50,9 @@ if (! defined('ABSPATH')) {
                     <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>: <br />
                     <label><input type="radio" name="mi-e-vis" value="draft" /> <?php esc_html_e('Draft', 'markdown-importer'); ?></label><br />
                     <label><input type="radio" name="mi-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label><br />
+                    <label><input type="radio" name="mi-e-vis" value="future" /> <?php esc_html_e('Scheduled', 'markdown-importer'); ?></label><br />
                     <label><input type="radio" name="mi-e-vis" value="publish" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
-                    <label class="mi-label" for="mi-e-password"><?php esc_html_e('Public password (optional)', 'markdown-importer'); ?></label>
+                    <label class="mi-label" for="mi-e-password"><?php esc_html_e('Password when public or scheduled (optional)', 'markdown-importer'); ?></label>
                     <input type="text" class="widefat" id="mi-e-password" />
                 </div>
                 <?php

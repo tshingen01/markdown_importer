@@ -97,6 +97,8 @@ class MI_Admin
                     'scheduleNowBtn' => __('Now', 'markdown-importer'),
                     'scheduleConfirmBtn' => __('Schedule', 'markdown-importer'),
                     'schedulePickerUnavailable' => __('Date picker could not load.', 'markdown-importer'),
+                    'visibilityScheduled' => __('Scheduled', 'markdown-importer'),
+                    'visibilityWithPassword' => __('password', 'markdown-importer'),
                     'error' => __('Something went wrong.', 'markdown-importer'),
                 ],
             ]

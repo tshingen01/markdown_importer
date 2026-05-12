@@ -242,7 +242,7 @@ class MI_Renderer
         if (! $post || $post->post_type !== MI_Post_Type::POST_TYPE) {
             return '<span class="mi-missing-article-link">' . esc_html($key) . '</span>';
         }
-        if ($post->post_status === 'private' && ! self::can_view_private_articles()) {
+        if (! is_post_publicly_viewable($post) && ! current_user_can('read_post', $pid)) {
             return '<span class="mi-private-article-link">' . esc_html($key) . '</span>';
         }
         $url = get_permalink($pid);
@@ -323,6 +323,9 @@ class MI_Renderer
             return;
         }
         if ($post->post_status === 'private' && self::can_view_private_articles()) {
+            return;
+        }
+        if (in_array($post->post_status, ['draft', 'future'], true) && current_user_can('read_post', $post->ID)) {
             return;
         }
         global $wp_query;
