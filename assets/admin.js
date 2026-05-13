@@ -151,6 +151,8 @@
     function buildStructuredMd(article) {
         var body = String(article.markdown || '').replace(/^\n+/, '');
         return (
+            String(article.commit || '') +
+            '\n' +
             releaseToToken(article.release_date) +
             '\n' +
             visibilityToToken(article.visibility, article.password) +
@@ -211,24 +213,25 @@
     function parseStructuredMd(md) {
         var content = String(md || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         var lines = content.split('\n');
-        if (lines.length < 5) {
-            return { ok: false, message: 'Invalid MD structure. Expect lines 1–5 header (release, visibility, meta, slug, title) then markdown body.' };
+        if (lines.length < 6) {
+            return { ok: false, message: 'Invalid MD structure. Expect lines 1–6 header (commit, release, visibility, meta, slug, title) then markdown body.' };
         }
-        var releaseDate = parseReleaseToken(lines[0]);
+        var commit = $.trim(lines[0] || '');
+        var releaseDate = parseReleaseToken(lines[1]);
         if (!releaseDate) {
-            return { ok: false, message: 'Line 1 must be [[YYYY_MM_DD::HH_MM]] or [[now]].' };
+            return { ok: false, message: 'Line 2 must be [[YYYY_MM_DD::HH_MM]] or [[now]].' };
         }
-        var vis = parseVisibilityToken(lines[1]);
+        var vis = parseVisibilityToken(lines[2]);
         if (!vis) {
             return { ok: false, message: 'Line 2 must be [[PRIVATE]], [[DRAFT]], [[SCHEDULED]], [[SCHEDULED::password]], [[PUBLIC]], or [[PUBLIC::password]].' };
         }
-        var meta = $.trim(lines[2] || '');
-        var slug = $.trim(lines[3] || '');
-        var title = $.trim(lines[4] || '');
+        var meta = $.trim(lines[3] || '');
+        var slug = $.trim(lines[4] || '');
+        var title = $.trim(lines[5] || '');
         if (!slug || !title) {
-            return { ok: false, message: 'Line 4 (slug) and line 5 (title) are required.' };
+            return { ok: false, message: 'Line 5 (slug) and line 6 (title) are required.' };
         }
-        var markdown = lines.slice(5).join('\n').replace(/^\n+/, '');
+        var markdown = lines.slice(6).join('\n').replace(/^\n+/, '');
         return {
             ok: true,
             release_date: releaseDate,
@@ -237,6 +240,7 @@
             meta_description: meta,
             slug: slug,
             title: title,
+            commit: commit,
             markdown: markdown,
         };
     }
@@ -337,7 +341,7 @@
             $step1.addClass('mi-hidden');
             $step2.removeClass('mi-hidden');
             $stepLabel.text('Upload [2/2]');
-            rows.forEach(function (row, idx) {
+            rows.forEach(function (row) {
                 var err = row.error ? '<div class="mi-error">' + esc(row.error) + '</div>' : '';
                 var rd = esc(row.release_date || 'now');
                 var tr =
@@ -345,7 +349,7 @@
                     esc(row.id) +
                     '">' +
                     '<td>' +
-                    (idx + 1) +
+                    esc(row.id) +
                     '</td>' +
                     '<td>' +
                     esc(row.keyword) +
@@ -535,6 +539,7 @@
                 meta_description: meta,
                 slug: slug,
                 title: title,
+                commit: cur.commit,
                 markdown: cur.markdown,
             };
             $('#mi-q-e-md').val(buildStructuredMd(mergedArticle));
@@ -550,6 +555,7 @@
                     keyword: kw,
                     slug: parsedMd.slug,
                     meta_description: parsedMd.meta_description,
+                    commit: parsedMd.commit,
                     markdown: parsedMd.markdown,
                     release_date: parsedMd.release_date,
                     visibility: parsedMd.visibility,
@@ -669,7 +675,7 @@
                     renderEmptyTableRow($tbody, 6, 'No articles found.');
                     return;
                 }
-                rows.forEach(function (a, index) {
+                rows.forEach(function (a) {
                     var vis = String(a.visibility || 'private').toLowerCase();
                     if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                         vis = 'private';
@@ -680,7 +686,7 @@
                         esc(a.id) +
                         '">' +
                         '<td>' +
-                        esc(index + 1) +
+                        esc(a.id) +
                         '</td>' +
                         '<td>' +
                         esc(a.keyword) +
@@ -819,6 +825,7 @@
                 slug: slug,
                 title: title,
                 markdown: cur.markdown,
+                commit: cur.commit,
             };
             $('#mi-e-md').val(buildStructuredMd(mergedArticle));
             var parsedMd = parseStructuredMd($('#mi-e-md').val());
@@ -833,6 +840,7 @@
                     keyword: kw,
                     slug: parsedMd.slug,
                     meta_description: parsedMd.meta_description,
+                    commit: parsedMd.commit,
                     markdown: parsedMd.markdown,
                     release_date: parsedMd.release_date,
                     visibility: parsedMd.visibility,
@@ -1143,7 +1151,7 @@
                     var tr =
                         '<tr>' +
                         '<td>' +
-                        esc(idx + 1) +
+                        esc(a.id) +
                         '</td>' +
                         '<td>' +
                         esc(a.keyword) +
@@ -1279,7 +1287,6 @@
                 if (!id) {
                     return;
                 }
-                // I find this
                 requests.push(ajax('mi_patch_upgrade_item', { id: id, release_date: release }));
             });
             if (!requests.length) {

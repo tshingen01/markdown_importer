@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MI_Article_Service {
     const META_KEYWORD = '_mi_keyword';
+    const META_COMMIT = '_mi_commit';
     const META_MARKDOWN = '_mi_markdown';
     const META_RELEASE = '_mi_release_display';
     const META_PENDING_UPGRADE = '_mi_pending_upgrade';
@@ -96,7 +97,7 @@ class MI_Article_Service {
         return true;
     }
 
-    public static function create_article( array $parsed, $release_form_value, array $image_map = [] ) {
+    public static function create_article( array $parsed, $release_form_value ) {
         $uniq = self::validate_article_uniqueness( 0, $parsed[ 'keyword' ] ?? '', $parsed[ 'slug' ] ?? '' );
         if ( is_wp_error( $uniq ) ) {
             return $uniq;
@@ -133,7 +134,7 @@ class MI_Article_Service {
             return $post_id;
         }
 
-        self::attach_meta( $post_id, $parsed, $release, $image_map );
+        self::attach_meta( $post_id, $parsed, $release );
 
         return $post_id;
     }
@@ -200,7 +201,7 @@ class MI_Article_Service {
         return $out;
     }
 
-    public static function update_article( $post_id, array $parsed, $release_form_value, array $image_map = [] ) {
+    public static function update_article( $post_id, array $parsed, $release_form_value) {
         $uniq = self::validate_article_uniqueness( ( int ) $post_id, $parsed[ 'keyword' ] ?? '', $parsed[ 'slug' ] ?? '' );
         if ( is_wp_error( $uniq ) ) {
             return $uniq;
@@ -210,6 +211,7 @@ class MI_Article_Service {
         $post_date = MI_Staging::post_date_from_release( $release );
         $requested = isset( $parsed[ 'visibility' ] ) ? ( string ) $parsed[ 'visibility' ] : '';
         $password = isset( $parsed[ 'password' ] ) ? ( string ) $parsed[ 'password' ] : '';
+        $commit = isset( $parsed[ 'commit' ] ) ? ( string ) $parsed[ 'commit' ] : '';
 
         $update_data = [
             'ID' => $post_id,
@@ -235,7 +237,7 @@ class MI_Article_Service {
             return $updated;
         }
 
-        self::attach_meta( $post_id, $parsed, $release, $image_map );
+        self::attach_meta( $post_id, $parsed, $release );
         return $post_id;
     }
 
@@ -246,15 +248,11 @@ class MI_Article_Service {
         scheduled:bool, post_id:int, release:string}
         |WP_Error
         */
-        public static function schedule_or_apply_upgrade( $post_id, array $parsed, $release_form_value, $files_dir = '' ) {
+        public static function schedule_or_apply_upgrade( $post_id, array $parsed, $release_form_value) {
             $post_id = ( int ) $post_id;
             $release = MI_Staging::parse_release_input( $release_form_value );
             $release_ts = self::release_to_timestamp( $release );
-            $image_map = [];
-            if ( $files_dir !== '' && is_dir( $files_dir ) ) {
-                $image_map = self::import_images_for_post( $post_id, $files_dir, isset( $parsed[ 'markdown' ] ) ? ( string ) $parsed[ 'markdown' ] : '' );
-            }
-            $updated = self::update_article( $post_id, $parsed, $release, $image_map );
+            $updated = self::update_article( $post_id, $parsed, $release );
             if ( is_wp_error( $updated ) ) {
                 return $updated;
             }
@@ -329,13 +327,13 @@ class MI_Article_Service {
             return $ts > time() ? 'future' : 'publish';
         }
 
-        public static function attach_meta( $post_id, array $parsed, $release_normalized, array $image_map ) {
+        public static function attach_meta( $post_id, array $parsed, $release_normalized ) {
             update_post_meta( $post_id, self::META_KEYWORD, $parsed[ 'keyword' ] );
             update_post_meta( $post_id, self::META_MARKDOWN, $parsed[ 'markdown' ] );
+            update_post_meta( $post_id, self::META_COMMIT, $parsed[ 'commit' ] );
             MI_Cta::ensure_from_markdown( isset( $parsed[ 'markdown' ] ) ? ( string ) $parsed[ 'markdown' ] : '' );
             update_post_meta( $post_id, self::META_RELEASE, $release_normalized );
             update_post_meta( $post_id, '_mi_meta_description', $parsed[ 'meta_description' ] );
-            delete_post_meta( $post_id, '_mi_image_map' );
         }
 
         /**
@@ -406,6 +404,7 @@ class MI_Article_Service {
                 return null;
             }
             $kw = ( string ) get_post_meta( $post_id, self::META_KEYWORD, true );
+            $cmt = ( string ) get_post_meta( $post_id, self::META_COMMIT, true );
             $md = ( string ) get_post_meta( $post_id, self::META_MARKDOWN, true );
             $rel = ( string ) get_post_meta( $post_id, self::META_RELEASE, true );
             $meta = ( string ) get_post_meta( $post_id, '_mi_meta_description', true );
@@ -416,6 +415,7 @@ class MI_Article_Service {
             return [
                 'id' => ( int ) $post_id,
                 'keyword' => $kw,
+                'commit' => $cmt,
                 'slug' => $post->post_name,
                 'title' => $post->post_title,
                 'meta_description' => $meta,
@@ -429,13 +429,13 @@ class MI_Article_Service {
         /**
         * @return true|WP_Error
         */
-        public static function save_article_from_request( $post_id, $title, $keyword, $slug, $meta_description, $markdown, $release_date, $visibility, $password = '' ) {
+        public static function save_article_from_request( $post_id, $title, $keyword, $slug, $meta_description, $commit, $markdown, $release_date, $visibility, $password = '' ) {
             $slug = sanitize_title( $slug );
             $uniq = self::validate_article_uniqueness( ( int ) $post_id, $keyword, $slug );
             if ( is_wp_error( $uniq ) ) {
                 return $uniq;
             }
-
+            $commit = trim( ( string ) $commit );
             $keyword = trim( ( string ) $keyword );
             $release = MI_Staging::parse_release_input( $release_date );
             $post_date = MI_Staging::post_date_from_release( $release );
@@ -459,6 +459,7 @@ class MI_Article_Service {
                 ]
             );
             update_post_meta( $post_id, self::META_KEYWORD, $keyword );
+            update_post_meta( $post_id, self::META_COMMIT, $commit );
             update_post_meta( $post_id, self::META_MARKDOWN, $markdown );
             MI_Cta::ensure_from_markdown( $markdown );
             update_post_meta( $post_id, self::META_RELEASE, $release );

@@ -200,6 +200,7 @@ class MI_Ajax {
             $valid_items[] = [
                 'id' => MI_Staging::make_item_id(),
                 'batch' => $batch,
+                'commit' => $validation[ 'commit' ],
                 'filename' => $name,
                 'files_dir' => $dir,
                 'keyword' => $keyword,
@@ -283,6 +284,7 @@ class MI_Ajax {
                     [
                         'item' => [
                             'id' => ( string ) $item[ 'id' ],
+                            'commit' => isset( $item[ 'commit' ] ) ? ( string ) $item[ 'commit' ] : '',
                             'filename' => isset( $item[ 'filename' ] ) ? ( string ) $item[ 'filename' ] : '',
                             'keyword' => isset( $item[ 'keyword' ] ) ? ( string ) $item[ 'keyword' ] : '',
                             'slug' => isset( $item[ 'slug' ] ) ? ( string ) $item[ 'slug' ] : '',
@@ -310,6 +312,7 @@ class MI_Ajax {
         $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
         $slug_in = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
+        $cmt = isset( $_POST[ 'commit' ] ) ? wp_unslash( $_POST[ 'commit' ] ) : '';
         $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $release = isset( $_POST[ 'release_date' ] ) ? wp_unslash( $_POST[ 'release_date' ] ) : 'now';
         $vis = isset( $_POST[ 'visibility' ] ) ? sanitize_key( wp_unslash( $_POST[ 'visibility' ] ) ) : 'private';
@@ -342,7 +345,7 @@ class MI_Ajax {
             wp_send_json_error( [ 'message' => __( 'Queue item not found.', 'markdown-importer' ) ] );
         }
 
-        $composed = MI_Parser::compose_document( $release, $vis, $pwd, $meta, $slug_in, $title, $md );
+        $composed = MI_Parser::compose_document( $release, $vis, $pwd, $meta, $slug_in, $title, $cmt, $md );
         $validation = MI_Parser::validate_document( $composed );
         if ( ! $validation[ 'ok' ] ) {
             $msg = isset( $validation[ 'errors' ][ 0 ] ) ? ( string ) $validation[ 'errors' ][ 0 ] : __( 'Invalid markdown structure.', 'markdown-importer' );
@@ -388,6 +391,7 @@ class MI_Ajax {
         $rel_norm = isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : 'now';
         $queue[ $idx ][ 'keyword' ] = $keyword;
         $queue[ $idx ][ 'slug' ] = $slug_s;
+        $queue[ $idx ][ 'commit' ] = isset( $validation[ 'commit' ] ) ? ( string ) $validation[ 'commit' ] : '';
         $queue[ $idx ][ 'title' ] = isset( $validation[ 'title' ] ) ? ( string ) $validation[ 'title' ] : '';
         $queue[ $idx ][ 'meta_description' ] = isset( $validation[ 'meta_description' ] ) ? ( string ) $validation[ 'meta_description' ] : '';
         $queue[ $idx ][ 'markdown' ] = isset( $validation[ 'markdown' ] ) ? ( string ) $validation[ 'markdown' ] : '';
@@ -489,6 +493,7 @@ class MI_Ajax {
                 continue;
             }
             $parsed = [
+                'commit' => $item[ 'commit' ],
                 'title' => $item[ 'title' ],
                 'slug' => $item[ 'slug' ],
                 'meta_description' => $item[ 'meta_description' ],
@@ -497,7 +502,7 @@ class MI_Ajax {
                 'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : 'private',
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
             ];
-            $post_id = MI_Article_Service::create_article( $parsed, $item[ 'release_date' ], [] );
+            $post_id = MI_Article_Service::create_article( $parsed, $item[ 'release_date' ]);
             if ( is_wp_error( $post_id ) ) {
                 $failed[] = [
                     'filename' => isset( $item[ 'filename' ] ) ? ( string ) $item[ 'filename' ] : '',
@@ -662,12 +667,13 @@ class MI_Ajax {
         $keyword = isset( $_POST[ 'keyword' ] ) ? wp_unslash( $_POST[ 'keyword' ] ) : '';
         $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
+        $cmt = isset( $_POST[ 'commit' ] ) ? wp_unslash( $_POST[ 'commit' ] ) : '';
         $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $release = isset( $_POST[ 'release_date' ] ) ? wp_unslash( $_POST[ 'release_date' ] ) : 'now';
         $vis = isset( $_POST[ 'visibility' ] ) ? sanitize_key( wp_unslash( $_POST[ 'visibility' ] ) ) : 'private';
         $pwd = isset( $_POST[ 'password' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'password' ] ) ) : '';
 
-        $saved = MI_Article_Service::save_article_from_request( $id, $title, $keyword, $slug, $meta, $md, $release, $vis, $pwd );
+        $saved = MI_Article_Service::save_article_from_request( $id, $title, $keyword, $slug, $meta, $cmt, $md, $release, $vis, $pwd );
         if ( is_wp_error( $saved ) ) {
             wp_send_json_error( [ 'message' => $saved->get_error_message() ] );
         }
@@ -842,6 +848,7 @@ class MI_Ajax {
                 'slug' => $validation[ 'slug' ],
                 'title' => $validation[ 'title' ],
                 'meta_description' => $validation[ 'meta_description' ],
+                'commit' => isset( $validation[ 'commit' ] ) ? ( string ) $validation[ 'commit' ] : '',
                 'markdown' => $validation[ 'markdown' ],
                 'release_date' => MI_Staging::release_for_form( $rel ),
                 'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : 'private',
@@ -939,6 +946,7 @@ class MI_Ajax {
                 'title' => $item[ 'title' ],
                 'slug' => $item[ 'slug' ],
                 'meta_description' => $item[ 'meta_description' ],
+                'commit' => $item[ 'commit' ],
                 'markdown' => $item[ 'markdown' ],
                 'keyword' => $item[ 'keyword' ],
                 'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : '',
