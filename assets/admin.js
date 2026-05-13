@@ -98,12 +98,12 @@
         if (typeof batchUploaded !== 'undefined' && typeof batchTotal !== 'undefined') {
             parts.push(
                 'Upload failed: ' +
-                    String(invalidCount) +
-                    ' invalid file(s). ' +
-                    String(batchUploaded) +
-                    '/' +
-                    String(batchTotal) +
-                    ' uploaded.'
+                String(invalidCount) +
+                ' invalid file(s). ' +
+                String(batchUploaded) +
+                '/' +
+                String(batchTotal) +
+                ' uploaded.'
             );
         } else {
             parts.push('Upload failed: ' + String(invalidCount) + ' invalid file(s).');
@@ -669,7 +669,7 @@
                     renderEmptyTableRow($tbody, 6, 'No articles found.');
                     return;
                 }
-                rows.forEach(function (a) {
+                rows.forEach(function (a, index) {
                     var vis = String(a.visibility || 'private').toLowerCase();
                     if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                         vis = 'private';
@@ -680,7 +680,7 @@
                         esc(a.id) +
                         '">' +
                         '<td>' +
-                        esc(a.id) +
+                        esc(index + 1) +
                         '</td>' +
                         '<td>' +
                         esc(a.keyword) +
@@ -711,10 +711,10 @@
                         '<td>' +
                         (a.permalink
                             ? '<a href="' +
-                              esc(a.permalink) +
-                              '" class="mi-preview-link" target="_blank" rel="noopener noreferrer">' +
-                              esc(MIAdmin.previewLabel || 'Preview') +
-                              ' <span class="dashicons dashicons-external"></span></a>'
+                            esc(a.permalink) +
+                            '" class="mi-preview-link" target="_blank" rel="noopener noreferrer">' +
+                            esc(MIAdmin.previewLabel || 'Preview') +
+                            ' <span class="dashicons dashicons-external"></span></a>'
                             : '') +
                         '</td>' +
                         '<td>' +
@@ -1137,13 +1137,13 @@
                     renderEmptyTableRow($artBody, 5, 'No articles found.');
                     return;
                 }
-                rows.forEach(function (a) {
+                rows.forEach(function (a, idx) {
                     var vis = visibilityLabel(a.visibility, a.password || '');
                     var rd = a.release_date || '';
                     var tr =
                         '<tr>' +
                         '<td>' +
-                        esc(a.id) +
+                        esc(idx + 1) +
                         '</td>' +
                         '<td>' +
                         esc(a.keyword) +
