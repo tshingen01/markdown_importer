@@ -1279,6 +1279,7 @@
                 if (!id) {
                     return;
                 }
+                // I find this
                 requests.push(ajax('mi_patch_upgrade_item', { id: id, release_date: release }));
             });
             if (!requests.length) {
