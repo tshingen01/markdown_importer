@@ -330,7 +330,7 @@ class MI_Article_Service {
         public static function attach_meta( $post_id, array $parsed, $release_normalized ) {
             update_post_meta( $post_id, self::META_KEYWORD, $parsed[ 'keyword' ] );
             update_post_meta( $post_id, self::META_MARKDOWN, $parsed[ 'markdown' ] );
-            update_post_meta( $post_id, self::META_COMMENTT, $parsed[ 'comment' ] );
+            update_post_meta( $post_id, self::META_COMMENT, $parsed[ 'comment' ] );
             MI_Cta::ensure_from_markdown( isset( $parsed[ 'markdown' ] ) ? ( string ) $parsed[ 'markdown' ] : '' );
             update_post_meta( $post_id, self::META_RELEASE, $release_normalized );
             update_post_meta( $post_id, '_mi_meta_description', $parsed[ 'meta_description' ] );
@@ -404,7 +404,7 @@ class MI_Article_Service {
                 return null;
             }
             $kw = ( string ) get_post_meta( $post_id, self::META_KEYWORD, true );
-            $cmt = ( string ) get_post_meta( $post_id, self::META_COMMENTT, true );
+            $cmt = ( string ) get_post_meta( $post_id, self::META_COMMENT, true );
             $md = ( string ) get_post_meta( $post_id, self::META_MARKDOWN, true );
             $rel = ( string ) get_post_meta( $post_id, self::META_RELEASE, true );
             $meta = ( string ) get_post_meta( $post_id, '_mi_meta_description', true );
@@ -459,7 +459,7 @@ class MI_Article_Service {
                 ]
             );
             update_post_meta( $post_id, self::META_KEYWORD, $keyword );
-            update_post_meta( $post_id, self::META_COMMENTT, $comment );
+            update_post_meta( $post_id, self::META_COMMENT, $comment );
             update_post_meta( $post_id, self::META_MARKDOWN, $markdown );
             MI_Cta::ensure_from_markdown( $markdown );
             update_post_meta( $post_id, self::META_RELEASE, $release );
