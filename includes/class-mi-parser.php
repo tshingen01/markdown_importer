@@ -48,7 +48,7 @@ class MI_Parser
         $slug_error = '';
         $title = trim(isset($lines[5]) ? (string) $lines[5] : '');
         $markdown = implode("\n", array_slice($lines, 6));
-        $commit = trim(isset($lines[0]) ? (string) $lines[0] : '');
+        $comment = trim(isset($lines[0]) ? (string) $lines[0] : '');
         $line2 = trim(isset($lines[1]) ? (string) $lines[1] : '');
         $release = self::parse_release_line($line2);
         if (! $release['valid']) {
@@ -92,7 +92,7 @@ class MI_Parser
         return [
             'ok' => $errors === [],
             'errors' => $errors,
-            "commit" => $commit,
+            "comment" => $comment,
             'release_error' => $release_error,
             'visibility_error' => $visibility_error,
             'slug_error' => $slug_error,
@@ -111,9 +111,9 @@ class MI_Parser
     /**
      * Build canonical upload markdown (lines 1–5 header + body) from editor fields.
      */
-    public static function compose_document($release_form, $visibility, $password, $meta_description, $slug_line, $title, $commit, $markdown_body)
+    public static function compose_document($release_form, $visibility, $password, $meta_description, $slug_line, $title, $comment, $markdown_body)
     {
-        $line1 = trim((string) $commit);
+        $line1 = trim((string) $comment);
         $line2 = self::release_token_from_form($release_form);
         $line3 = self::visibility_token_from_status($visibility, $password);
         $meta = (string) $meta_description;

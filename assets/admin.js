@@ -151,7 +151,7 @@
     function buildStructuredMd(article) {
         var body = String(article.markdown || '').replace(/^\n+/, '');
         return (
-            String(article.commit || '') +
+            String(article.comment || '') +
             '\n' +
             releaseToToken(article.release_date) +
             '\n' +
@@ -214,16 +214,16 @@
         var content = String(md || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         var lines = content.split('\n');
         if (lines.length < 6) {
-            return { ok: false, message: 'Invalid MD structure. Expect lines 1–6 header (commit, release, visibility, meta, slug, title) then markdown body.' };
+            return { ok: false, message: 'Invalid MD structure. Expect lines 1–6 header (comment, release, visibility, meta, slug, title) then markdown body.' };
         }
-        var commit = $.trim(lines[0] || '');
+        var comment = $.trim(lines[0] || '');
         var releaseDate = parseReleaseToken(lines[1]);
         if (!releaseDate) {
             return { ok: false, message: 'Line 2 must be [[YYYY_MM_DD::HH_MM]] or [[now]].' };
         }
         var vis = parseVisibilityToken(lines[2]);
         if (!vis) {
-            return { ok: false, message: 'Line 2 must be [[PRIVATE]], [[DRAFT]], [[SCHEDULED]], [[SCHEDULED::password]], [[PUBLIC]], or [[PUBLIC::password]].' };
+            return { ok: false, message: 'Line 3 must be [[PRIVATE]], [[DRAFT]], [[SCHEDULED]], [[SCHEDULED::password]], [[PUBLIC]], or [[PUBLIC::password]].' };
         }
         var meta = $.trim(lines[3] || '');
         var slug = $.trim(lines[4] || '');
@@ -232,6 +232,7 @@
             return { ok: false, message: 'Line 5 (slug) and line 6 (title) are required.' };
         }
         var markdown = lines.slice(6).join('\n').replace(/^\n+/, '');
+
         return {
             ok: true,
             release_date: releaseDate,
@@ -240,7 +241,7 @@
             meta_description: meta,
             slug: slug,
             title: title,
-            commit: commit,
+            comment: comment,
             markdown: markdown,
         };
     }
@@ -539,7 +540,7 @@
                 meta_description: meta,
                 slug: slug,
                 title: title,
-                commit: cur.commit,
+                comment: cur.comment,
                 markdown: cur.markdown,
             };
             $('#mi-q-e-md').val(buildStructuredMd(mergedArticle));
@@ -555,7 +556,7 @@
                     keyword: kw,
                     slug: parsedMd.slug,
                     meta_description: parsedMd.meta_description,
-                    commit: parsedMd.commit,
+                    comment: parsedMd.comment,
                     markdown: parsedMd.markdown,
                     release_date: parsedMd.release_date,
                     visibility: parsedMd.visibility,
@@ -795,6 +796,7 @@
          */
         function buildPayloadForArticleSave() {
             var cur = parseStructuredMd($('#mi-e-md').val());
+            console.log(cur);
             if (!cur.ok) {
                 return cur;
             }
@@ -825,7 +827,7 @@
                 slug: slug,
                 title: title,
                 markdown: cur.markdown,
-                commit: cur.commit,
+                comment: cur.comment,
             };
             $('#mi-e-md').val(buildStructuredMd(mergedArticle));
             var parsedMd = parseStructuredMd($('#mi-e-md').val());
@@ -840,7 +842,7 @@
                     keyword: kw,
                     slug: parsedMd.slug,
                     meta_description: parsedMd.meta_description,
-                    commit: parsedMd.commit,
+                    comment: parsedMd.comment,
                     markdown: parsedMd.markdown,
                     release_date: parsedMd.release_date,
                     visibility: parsedMd.visibility,
@@ -895,8 +897,10 @@
                 alert(built.message || MIAdmin.i18n.error);
                 return;
             }
+            console.log(built.payload);
             ajax('mi_save_article', built.payload).done(function (res) {
                 if (res.success) {
+                    console.log(res.data.article);
                     refillArticleEditorFromPayload(res.data.article);
                     alert(MIAdmin.i18n.saved);
                     loadList($('#mi-articles-search').val());

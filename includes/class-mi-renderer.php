@@ -70,7 +70,7 @@ class MI_Renderer
         $p->setSafeMode(false);
         $inner = $p->text($work);
         $inner = wp_kses(self::sanitize_output_html($inner), self::allowed_html());
-        return '<div class="mi-article-content">' . $inner . '</div>';
+        return $inner;
     }
 
     private static function sanitize_output_html($html)
