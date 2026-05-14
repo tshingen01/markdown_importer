@@ -151,18 +151,6 @@
     function buildStructuredMd(article) {
         var body = String(article.markdown || '').replace(/^\n+/, '');
         return (
-            String(article.comment || '') +
-            '\n' +
-            releaseToToken(article.release_date) +
-            '\n' +
-            visibilityToToken(article.visibility, article.password) +
-            '\n' +
-            String(article.meta_description || '') +
-            '\n' +
-            String(article.slug || '') +
-            '\n' +
-            String(article.title || '') +
-            '\n' +
             body
         );
     }
@@ -210,42 +198,6 @@
         return null;
     }
 
-    function parseStructuredMd(md) {
-        var content = String(md || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        var lines = content.split('\n');
-        if (lines.length < 6) {
-            return { ok: false, message: 'Invalid MD structure. Expect lines 1–6 header (comment, release, visibility, meta, slug, title) then markdown body.' };
-        }
-        var comment = $.trim(lines[0] || '');
-        var releaseDate = parseReleaseToken(lines[1]);
-        if (!releaseDate) {
-            return { ok: false, message: 'Line 2 must be [[YYYY_MM_DD::HH_MM]] or [[now]].' };
-        }
-        var vis = parseVisibilityToken(lines[2]);
-        if (!vis) {
-            return { ok: false, message: 'Line 3 must be [[PRIVATE]], [[DRAFT]], [[SCHEDULED]], [[SCHEDULED::password]], [[PUBLIC]], or [[PUBLIC::password]].' };
-        }
-        var meta = $.trim(lines[3] || '');
-        var slug = $.trim(lines[4] || '');
-        var title = $.trim(lines[5] || '');
-        if (!slug || !title) {
-            return { ok: false, message: 'Line 5 (slug) and line 6 (title) are required.' };
-        }
-        var markdown = lines.slice(6).join('\n').replace(/^\n+/, '');
-
-        return {
-            ok: true,
-            release_date: releaseDate,
-            visibility: vis.visibility,
-            password: vis.password,
-            meta_description: meta,
-            slug: slug,
-            title: title,
-            comment: comment,
-            markdown: markdown,
-        };
-    }
-
     function visibilityLabel(status, password) {
         var s = String(status || '').toLowerCase();
         if (s === 'private') {
@@ -276,7 +228,15 @@
         var $step2 = $('#mi-upload-step2');
         var $tbody = $('#mi-queue-table tbody');
         var $queueEditor = $('#mi-queue-editor');
+        var $categories = $('#mi-q-e-categories');
         var currentQueueId = null;
+
+        $categories.select2({
+            tags: true,
+            tokenSeparators: [','],
+            width: '100%',
+            allowClear: true,
+        });
 
         function syncQueuePasswordField() {
             var vis = $('input[name="mi-q-e-vis"]:checked').val();
@@ -313,6 +273,7 @@
             $('#mi-q-filename').text(it.filename || '');
             $('#mi-q-e-title').val(it.title || '');
             $('#mi-q-e-keyword').val(it.keyword || '');
+            $('#mi-q-e-comment').val(it.comment || '');
             $('#mi-q-e-slug').val(it.slug || '');
             $('#mi-q-e-meta').val(it.meta_description || '');
             $('#mi-q-e-md').val(buildStructuredMd(it));
@@ -510,10 +471,7 @@
          * Only the markdown body is taken from lines 6+ of the textarea.
          */
         function buildPayloadForImportQueueSave() {
-            var cur = parseStructuredMd($('#mi-q-e-md').val());
-            if (!cur.ok) {
-                return cur;
-            }
+            var md = $('#mi-q-e-md').val();
             var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
             if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
@@ -525,6 +483,7 @@
             }
             var slug = String($('#mi-q-e-slug').val() || '').trim();
             var title = String($('#mi-q-e-title').val() || '').trim();
+            var cmt = String($('#mi-q-e-comment').val() || '').trim();
             var meta = String($('#mi-q-e-meta').val() || '');
             var kw = String($('#mi-q-e-keyword').val() || '').trim();
             if (!kw) {
@@ -533,34 +492,19 @@
             if (!slug || !title) {
                 return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
             }
-            var mergedArticle = {
-                release_date: releaseVal,
-                visibility: vis,
-                password: pwd,
-                meta_description: meta,
-                slug: slug,
-                title: title,
-                comment: cur.comment,
-                markdown: cur.markdown,
-            };
-            $('#mi-q-e-md').val(buildStructuredMd(mergedArticle));
-            var parsedMd = parseStructuredMd($('#mi-q-e-md').val());
-            if (!parsedMd.ok) {
-                return parsedMd;
-            }
             return {
                 ok: true,
                 payload: {
                     id: currentQueueId,
-                    title: parsedMd.title,
                     keyword: kw,
-                    slug: parsedMd.slug,
-                    meta_description: parsedMd.meta_description,
-                    comment: parsedMd.comment,
-                    markdown: parsedMd.markdown,
-                    release_date: parsedMd.release_date,
-                    visibility: parsedMd.visibility,
-                    password: parsedMd.password,
+                    release_date: releaseVal,
+                    visibility: vis,
+                    password: pwd,
+                    meta_description: meta,
+                    slug: slug,
+                    title: title,
+                    comment: cmt,
+                    markdown: md,
                 },
             };
         }
@@ -653,6 +597,7 @@
 
         var $tbody = $('#mi-articles-table tbody');
         var $editor = $('#mi-article-editor');
+        var $categories = $('#mi-e-categories');
         var currentId = null;
 
         function syncPasswordField() {
@@ -795,11 +740,10 @@
          * Lines 1–5 of structured MD come from the side/top inputs; body from textarea lines 6+.
          */
         function buildPayloadForArticleSave() {
-            var cur = parseStructuredMd($('#mi-e-md').val());
-            console.log(cur);
-            if (!cur.ok) {
-                return cur;
-            }
+            var cates = $categories.val() || ['uncategorized'];
+
+            var cmt = String($('#mi-e-comment').val() || '').trim();
+            var md = $('#mi-e-md').val();
             var vis = $('input[name="mi-e-vis"]:checked').val() || 'private';
             if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
@@ -819,34 +763,19 @@
             if (!slug || !title) {
                 return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
             }
-            var mergedArticle = {
-                release_date: releaseVal,
-                visibility: vis,
-                password: pwd,
-                meta_description: meta,
-                slug: slug,
-                title: title,
-                markdown: cur.markdown,
-                comment: cur.comment,
-            };
-            $('#mi-e-md').val(buildStructuredMd(mergedArticle));
-            var parsedMd = parseStructuredMd($('#mi-e-md').val());
-            if (!parsedMd.ok) {
-                return parsedMd;
-            }
             return {
                 ok: true,
                 payload: {
                     id: currentId,
-                    title: parsedMd.title,
                     keyword: kw,
-                    slug: parsedMd.slug,
-                    meta_description: parsedMd.meta_description,
-                    comment: parsedMd.comment,
-                    markdown: parsedMd.markdown,
-                    release_date: parsedMd.release_date,
-                    visibility: parsedMd.visibility,
-                    password: parsedMd.password,
+                    release_date: releaseVal,
+                    visibility: vis,
+                    password: pwd,
+                    meta_description: meta,
+                    slug: slug,
+                    title: title,
+                    comment: cmt,
+                    markdown: md,
                 },
             };
         }
@@ -857,6 +786,7 @@
             }
             $('#mi-e-title').val(a.title || '');
             $('#mi-e-keyword').val(a.keyword || '');
+            $('#mi-e-comment').val(a.comment || '');
             $('#mi-e-slug').val(a.slug || '');
             $('#mi-e-meta').val(a.meta_description || '');
             $('#mi-e-md').val(buildStructuredMd(a));
@@ -878,10 +808,22 @@
                     return;
                 }
                 var a = res.data.article;
-                currentId = a.id;
+                var cates = res.data.categories;
+                $categories.empty();
+                Object.keys(cates).forEach(function (c) {
+                    $categories.append('<option selected value="' + esc(c) + '">' + esc(cates[c].text) + '</option>');
+                })
                 refillArticleEditorFromPayload(a);
                 $editor.removeClass('mi-hidden');
             });
+        });
+
+        $categories.select2({
+            tags: true,
+            tokenSeparators: [','],
+            placeholder: 'Select or type value',
+            allowClear: true,
+            width: '100%'
         });
 
         $editor.on('change', 'input[name="mi-e-vis"]', function () {
@@ -897,10 +839,8 @@
                 alert(built.message || MIAdmin.i18n.error);
                 return;
             }
-            console.log(built.payload);
             ajax('mi_save_article', built.payload).done(function (res) {
                 if (res.success) {
-                    console.log(res.data.article);
                     refillArticleEditorFromPayload(res.data.article);
                     alert(MIAdmin.i18n.saved);
                     loadList($('#mi-articles-search').val());

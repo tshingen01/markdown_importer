@@ -30,9 +30,16 @@ if (! defined('ABSPATH')) {
         <h3><?php esc_html_e('Edit article', 'markdown-importer'); ?></h3>
         <div class="mi-editor-grid">
             <div class="mi-editor-main">
+                <label class="mi-label"><?php esc_html_e('Comment', 'markdown-importer'); ?></label>
+                <input type="text" class="widefat" id="mi-e-comment" placeholder="<?php esc_attr_e('Optional comment', 'markdown-importer'); ?>" />
+                
+                <label class="mi-label"><?php esc_html_e('Categories', 'markdown-importer'); ?></label>
+                <select id="mi-e-categories" name="mi-e-categories[]" multiple ></select>
+                
                 <label class="mi-label"><?php esc_html_e('Title', 'markdown-importer'); ?></label>
                 <input type="text" class="widefat" id="mi-e-title" />
 
+                
                 <label class="mi-label"><?php esc_html_e('Keyword', 'markdown-importer'); ?></label>
                 <input type="text" class="widefat" id="mi-e-keyword" placeholder="<?php esc_attr_e('From filename; must be unique', 'markdown-importer'); ?>" />
 
@@ -42,7 +49,7 @@ if (! defined('ABSPATH')) {
                 <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
                 <textarea class="widefat" rows="2" id="mi-e-meta"></textarea>
 
-                <label class="mi-label"><?php esc_html_e('Text Editor', 'markdown-importer'); ?></label>
+                <label class="mi-label"><?php esc_html_e('Article Content', 'markdown-importer'); ?></label>
                 <textarea class="widefat mi-code" rows="16" id="mi-e-md"></textarea>
             </div>
             <div class="mi-editor-side">

@@ -5,8 +5,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class MI_Article_Service {
-    const META_KEYWORD = '_mi_keyword';
     const META_COMMENT = '_mi_comment';
+    const META_CATEGORIES = '_mi_categories';
+    const META_KEYWORD = '_mi_keyword';
     const META_MARKDOWN = '_mi_markdown';
     const META_RELEASE = '_mi_release_display';
     const META_PENDING_UPGRADE = '_mi_pending_upgrade';
@@ -328,9 +329,10 @@ class MI_Article_Service {
         }
 
         public static function attach_meta( $post_id, array $parsed, $release_normalized ) {
+            update_post_meta( $post_id, self::META_COMMENT, $parsed[ 'comment' ] );
+            update_post_meta( $post_id, self::META_CATEGORIES, $parsed[ 'categories' ]); 
             update_post_meta( $post_id, self::META_KEYWORD, $parsed[ 'keyword' ] );
             update_post_meta( $post_id, self::META_MARKDOWN, $parsed[ 'markdown' ] );
-            update_post_meta( $post_id, self::META_COMMENT, $parsed[ 'comment' ] );
             MI_Cta::ensure_from_markdown( isset( $parsed[ 'markdown' ] ) ? ( string ) $parsed[ 'markdown' ] : '' );
             update_post_meta( $post_id, self::META_RELEASE, $release_normalized );
             update_post_meta( $post_id, '_mi_meta_description', $parsed[ 'meta_description' ] );

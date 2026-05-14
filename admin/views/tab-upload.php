@@ -64,6 +64,12 @@ Intro text...
             </p>
             <div class="mi-editor-grid">
                 <div class="mi-editor-main">
+                    <label class="mi-label"><?php esc_html_e('Comment', 'markdown-importer'); ?></label>
+                    <input type="text" class="widefat" id="mi-q-e-comment" placeholder="<?php esc_attr_e('Optional Comment', 'markdown-importer'); ?>" />
+                    
+                    <label class="mi-label"><?php esc_html_e('Categories', 'markdown-importer'); ?></label>
+                    <select id="mi-q-e-categories" name="mi-q-e-categories[]" multiple ></select> 
+                    
                     <label class="mi-label"><?php esc_html_e('Title', 'markdown-importer'); ?></label>
                     <input type="text" class="widefat" id="mi-q-e-title" />
 

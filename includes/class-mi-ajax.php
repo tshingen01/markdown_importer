@@ -33,7 +33,7 @@ class MI_Ajax {
             'mi_clear_upgrade_queue',
         ];
         foreach ( $actions as $action ) {
-            add_action( 'wp_ajax_' . $action, [ self::class, str_replace( 'mi_', '', $action ) ] );
+            add_action( 'wp_ajax_' . $action, [ self::class, str_replace( "mi_", "", $action ) ] );
         }
     }
 
@@ -121,7 +121,6 @@ class MI_Ajax {
             if ( ! preg_match( '/\.md$/i', $name ) ) {
                 continue;
             }
-
             $content = file_get_contents( $dest );
             if ( $content === false ) {
                 $invalid_files[] = [
@@ -136,7 +135,6 @@ class MI_Ajax {
                 ];
                 continue;
             }
-
             $validation = MI_Parser::validate_document( $content );
             $keyword = MI_Parser::keyword_from_filename( $name );
             if ( ! $validation[ 'ok' ] ) {
@@ -148,6 +146,7 @@ class MI_Ajax {
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
                     'visibility_status' => isset( $validation[ 'visibility_error' ] ) ? ( string ) $validation[ 'visibility_error' ] : '',
+                    'categories' => isset( $validation[ 'categories' ] ) && is_array( $validation[ 'categories' ] ) ? array_values( array_map( 'strval', $validation[ 'categories' ] ) ) : [],
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -197,20 +196,24 @@ class MI_Ajax {
             }
 
             $rel = isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : 'now';
+            $categories = isset( $validation[ 'categories' ] ) && is_array( $validation[ 'categories' ] ) ? array_values( array_map( 'strval', $validation[ 'categories' ] ) ) : [];
+            $visibility = isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : 'private';
+            $password = isset( $validation[ 'password' ] ) ? ( string ) $validation[ 'password' ] : '';
             $valid_items[] = [
                 'id' => MI_Staging::make_item_id(),
                 'batch' => $batch,
-                'comment' => $validation[ 'comment' ],
                 'filename' => $name,
                 'files_dir' => $dir,
                 'keyword' => $keyword,
+                'comment' => $validation[ 'comment' ],
+                'release_date' => MI_Staging::release_for_form( $rel ),
+                'visibility' => $visibility,
+                'password' => $password,
+                'meta_description' => $validation[ 'meta_description' ],
+                'categories' => $categories,
                 'slug' => $slug,
                 'title' => $validation[ 'title' ],
-                'meta_description' => $validation[ 'meta_description' ],
                 'markdown' => $validation[ 'markdown' ],
-                'release_date' => MI_Staging::release_for_form( $rel ),
-                'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : 'private',
-                'password' => isset( $validation[ 'password' ] ) ? ( string ) $validation[ 'password' ] : '',
                 'error' => '',
             ];
         }
@@ -494,6 +497,7 @@ class MI_Ajax {
             }
             $parsed = [
                 'comment' => $item[ 'comment' ],
+                'categories' => $item[ 'categories' ],
                 'title' => $item[ 'title' ],
                 'slug' => $item[ 'slug' ],
                 'meta_description' => $item[ 'meta_description' ],
@@ -502,7 +506,7 @@ class MI_Ajax {
                 'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : 'private',
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
             ];
-            $post_id = MI_Article_Service::create_article( $parsed, $item[ 'release_date' ]);
+            $post_id = MI_Article_Service::create_article( $parsed, $item[ 'release_date' ] );
             if ( is_wp_error( $post_id ) ) {
                 $failed[] = [
                     'filename' => isset( $item[ 'filename' ] ) ? ( string ) $item[ 'filename' ] : '',
@@ -649,11 +653,20 @@ class MI_Ajax {
     public static function get_article() {
         self::auth();
         $id = isset( $_POST[ 'id' ] ) ? absint( $_POST[ 'id' ] ) : 0;
+        $categories = array_map( function( $cat ) {
+            return [
+                'id' => $cat->term_id,
+                'text' => $cat->name
+            ];
+        }
+        , get_categories( [
+            'hide_empty' => false,
+        ] ) );
         $payload = MI_Article_Service::get_article_payload( $id );
         if ( $payload === null ) {
             wp_send_json_error( [ 'message' => __( 'Article not found.', 'markdown-importer' ) ] );
         }
-        wp_send_json_success( [ 'article' => $payload ] );
+        wp_send_json_success( [ 'article' => $payload, 'categories' => $categories ] );
     }
 
     public static function save_article() {
