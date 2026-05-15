@@ -124,7 +124,7 @@ class MI_Renderer
                 $url = wp_get_attachment_url($att);
             }
             if (! $url) {
-                return '<img src="" alt="' . esc_attr($alt) . '" class="mi-inline-image" loading="lazy" />';
+                return null;
             }
             return '<img src="' . esc_url($url) . '" alt="' . esc_attr($alt) . '" class="mi-inline-image" loading="lazy" />';
         };
@@ -173,7 +173,7 @@ class MI_Renderer
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
-                return wp_kses(self::sanitize_output_html($cta['code']), self::allowed_html());
+                return wp_kses(self::sanitize_output_html(''), self::allowed_html());
             },
             $text
         );

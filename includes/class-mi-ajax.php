@@ -146,7 +146,7 @@ class MI_Ajax {
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
                     'visibility_status' => isset( $validation[ 'visibility_error' ] ) ? ( string ) $validation[ 'visibility_error' ] : '',
-                    'categories' => isset( $validation[ 'categories' ] ) && is_array( $validation[ 'categories' ] ) ? array_values( array_map( 'strval', $validation[ 'categories' ] ) ) : [],
+                    'categories' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -184,6 +184,8 @@ class MI_Ajax {
                     'filename' => $name,
                     'keyword' => $keyword,
                     'keyword_status' => $keyword_status,
+                    'categories' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
+                    'categories_raw' => isset( $validation[ 'categories_raw' ] ) ? ( string ) $validation[ 'categories_raw' ] : '',     
                     'release_date' => isset( $validation[ 'release_raw' ] ) && ( string ) $validation[ 'release_raw' ] !== '' ? ( string ) $validation[ 'release_raw' ] : ( isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : '' ),
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
@@ -282,12 +284,20 @@ class MI_Ajax {
         $queue = MI_Staging::get_queue( $uid );
         foreach ( $queue as $item ) {
             if ( isset( $item[ 'id' ] ) && $item[ 'id' ] === $id ) {
+                $wp_categories = get_categories( [
+                    'hide_empty' => false,
+                ] );
+                $categories = [];
+                foreach ( $wp_categories as $cat ) {
+                    $categories[] = $cat->name;
+                }
                 $rel = isset( $item[ 'release_date' ] ) ? ( string ) $item[ 'release_date' ] : 'now';
                 wp_send_json_success(
                     [
                         'item' => [
                             'id' => ( string ) $item[ 'id' ],
                             'comment' => isset( $item[ 'comment' ] ) ? ( string ) $item[ 'comment' ] : '',
+                            'categories' => isset( $item[ 'categories' ] ) && is_array( $item[ 'categories' ] ) ? array_values( array_map( 'strval', $item[ 'categories' ] ) ) : [],
                             'filename' => isset( $item[ 'filename' ] ) ? ( string ) $item[ 'filename' ] : '',
                             'keyword' => isset( $item[ 'keyword' ] ) ? ( string ) $item[ 'keyword' ] : '',
                             'slug' => isset( $item[ 'slug' ] ) ? ( string ) $item[ 'slug' ] : '',
@@ -299,6 +309,7 @@ class MI_Ajax {
                             'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
                             'error' => isset( $item[ 'error' ] ) ? ( string ) $item[ 'error' ] : '',
                         ],
+                        'categories_all' => $categories,
                     ]
                 );
                 return;
@@ -312,10 +323,11 @@ class MI_Ajax {
         $uid = get_current_user_id();
         $id = isset( $_POST[ 'id' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'id' ] ) ) : '';
         $keyword = isset( $_POST[ 'keyword' ] ) ? trim( wp_unslash( $_POST[ 'keyword' ] ) ) : '';
+        $cmt = isset( $_POST[ 'comment' ] ) ? wp_unslash( $_POST[ 'comment' ] ) : '';
+        $ctg = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
         $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
         $slug_in = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
-        $cmt = isset( $_POST[ 'comment' ] ) ? wp_unslash( $_POST[ 'comment' ] ) : '';
         $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $release = isset( $_POST[ 'release_date' ] ) ? wp_unslash( $_POST[ 'release_date' ] ) : 'now';
         $vis = isset( $_POST[ 'visibility' ] ) ? sanitize_key( wp_unslash( $_POST[ 'visibility' ] ) ) : 'private';
@@ -348,19 +360,20 @@ class MI_Ajax {
             wp_send_json_error( [ 'message' => __( 'Queue item not found.', 'markdown-importer' ) ] );
         }
 
-        $composed = MI_Parser::compose_document( $release, $vis, $pwd, $meta, $slug_in, $title, $cmt, $md );
+        $composed = MI_Parser::compose_document($cmt, $release, $vis, $pwd, $meta, $ctg, $slug_in, $title, $md );
         $validation = MI_Parser::validate_document( $composed );
         if ( ! $validation[ 'ok' ] ) {
             $msg = isset( $validation[ 'errors' ][ 0 ] ) ? ( string ) $validation[ 'errors' ][ 0 ] : __( 'Invalid markdown structure.', 'markdown-importer' );
             wp_send_json_error( [ 'message' => $msg ] );
         }
 
-        $slug_s = isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '';
         $kw_lower = strtolower( $keyword );
         $dup_kw = self::import_queue_keyword_conflict( $queue, $id, $kw_lower );
         if ( $dup_kw !== '' ) {
             wp_send_json_error( [ 'message' => $dup_kw ] );
         }
+
+        $slug_s = isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '';
         $dup_slug = self::import_queue_slug_conflict( $queue, $id, $slug_s );
         if ( $dup_slug !== '' ) {
             wp_send_json_error( [ 'message' => $dup_slug ] );
@@ -378,6 +391,7 @@ class MI_Ajax {
                 ]
             );
         }
+
         $slug_post_id = MI_Article_Service::find_post_id_by_slug( $slug_s, 0 );
         if ( $slug_post_id > 0 ) {
             wp_send_json_error(
@@ -393,14 +407,15 @@ class MI_Ajax {
 
         $rel_norm = isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : 'now';
         $queue[ $idx ][ 'keyword' ] = $keyword;
-        $queue[ $idx ][ 'slug' ] = $slug_s;
         $queue[ $idx ][ 'comment' ] = isset( $validation[ 'comment' ] ) ? ( string ) $validation[ 'comment' ] : '';
-        $queue[ $idx ][ 'title' ] = isset( $validation[ 'title' ] ) ? ( string ) $validation[ 'title' ] : '';
-        $queue[ $idx ][ 'meta_description' ] = isset( $validation[ 'meta_description' ] ) ? ( string ) $validation[ 'meta_description' ] : '';
-        $queue[ $idx ][ 'markdown' ] = isset( $validation[ 'markdown' ] ) ? ( string ) $validation[ 'markdown' ] : '';
         $queue[ $idx ][ 'release_date' ] = MI_Staging::release_for_form( $rel_norm );
         $queue[ $idx ][ 'visibility' ] = isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : 'private';
         $queue[ $idx ][ 'password' ] = isset( $validation[ 'password' ] ) ? ( string ) $validation[ 'password' ] : '';
+        $queue[ $idx ][ 'meta_description' ] = isset( $validation[ 'meta_description' ] ) ? ( string ) $validation[ 'meta_description' ] : '';
+        $queue[ $idx ][ 'markdown' ] = isset( $validation[ 'markdown' ] ) ? ( string ) $validation[ 'markdown' ] : '';
+        $queue[ $idx ][ 'categories' ] = array_values( array_map( 'strval', $validation[ 'categories' ] ) );
+        $queue[ $idx ][ 'slug' ] = $slug_s;
+        $queue[ $idx ][ 'title' ] = isset( $validation[ 'title' ] ) ? ( string ) $validation[ 'title' ] : '';
         $queue[ $idx ][ 'error' ] = '';
 
         if ( ! empty( $queue[ $idx ][ 'files_dir' ] ) && ! empty( $queue[ $idx ][ 'filename' ] ) && is_dir( ( string ) $queue[ $idx ][ 'files_dir' ] ) ) {
@@ -496,15 +511,15 @@ class MI_Ajax {
                 continue;
             }
             $parsed = [
-                'comment' => $item[ 'comment' ],
-                'categories' => $item[ 'categories' ],
-                'title' => $item[ 'title' ],
-                'slug' => $item[ 'slug' ],
-                'meta_description' => $item[ 'meta_description' ],
-                'markdown' => $item[ 'markdown' ],
                 'keyword' => $item[ 'keyword' ],
+                'comment' => $item[ 'comment' ],
                 'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : 'private',
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
+                'meta_description' => $item[ 'meta_description' ],
+                'categories' => $item[ 'categories' ],
+                'slug' => $item[ 'slug' ],
+                'title' => $item[ 'title' ],
+                'markdown' => $item[ 'markdown' ],
             ];
             $post_id = MI_Article_Service::create_article( $parsed, $item[ 'release_date' ] );
             if ( is_wp_error( $post_id ) ) {
@@ -653,15 +668,14 @@ class MI_Ajax {
     public static function get_article() {
         self::auth();
         $id = isset( $_POST[ 'id' ] ) ? absint( $_POST[ 'id' ] ) : 0;
-        $categories = array_map( function( $cat ) {
-            return [
-                'id' => $cat->term_id,
-                'text' => $cat->name
-            ];
-        }
-        , get_categories( [
+        $wp_categories = get_categories( [
             'hide_empty' => false,
-        ] ) );
+        ] );
+        $categories = [];
+        foreach ( $wp_categories as $cat ) {
+            $categories[] = $cat->name;
+        }
+
         $payload = MI_Article_Service::get_article_payload( $id );
         if ( $payload === null ) {
             wp_send_json_error( [ 'message' => __( 'Article not found.', 'markdown-importer' ) ] );
@@ -676,17 +690,18 @@ class MI_Ajax {
         if ( ! $post || $post->post_type !== MI_Post_Type::POST_TYPE ) {
             wp_send_json_error( [ 'message' => __( 'Article not found.', 'markdown-importer' ) ] );
         }
-        $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
         $keyword = isset( $_POST[ 'keyword' ] ) ? wp_unslash( $_POST[ 'keyword' ] ) : '';
-        $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
-        $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
         $cmt = isset( $_POST[ 'comment' ] ) ? wp_unslash( $_POST[ 'comment' ] ) : '';
-        $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $release = isset( $_POST[ 'release_date' ] ) ? wp_unslash( $_POST[ 'release_date' ] ) : 'now';
         $vis = isset( $_POST[ 'visibility' ] ) ? sanitize_key( wp_unslash( $_POST[ 'visibility' ] ) ) : 'private';
         $pwd = isset( $_POST[ 'password' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'password' ] ) ) : '';
+        $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
+        $ctg = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
+        $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
+        $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
+        $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
 
-        $saved = MI_Article_Service::save_article_from_request( $id, $title, $keyword, $slug, $meta, $cmt, $md, $release, $vis, $pwd );
+        $saved = MI_Article_Service::save_article_from_request( $id, $keyword, $cmt, $release, $vis, $pwd, $meta, $ctg, $slug, $title, $md );
         if ( is_wp_error( $saved ) ) {
             wp_send_json_error( [ 'message' => $saved->get_error_message() ] );
         }

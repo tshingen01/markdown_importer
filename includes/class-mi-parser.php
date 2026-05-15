@@ -80,7 +80,7 @@ class MI_Parser {
             $slug_line = trim( isset( $lines[ 5 ] ) ? ( string ) $lines[ 5 ] : '' );
             $slug_error = '';
             $title = trim( isset( $lines[ 6 ] ) ? ( string ) $lines[ 6 ] : '' );
-            $markdown = implode( '\n', array_slice( $lines, 7 ) );
+            $markdown = implode( "\n", array_slice( $lines, 7 ) );
 
             if ( $slug_line === '' ) {
                 $slug_error = __( 'Empty URL slug is not allowed.', 'markdown-importer' );
@@ -106,35 +106,36 @@ class MI_Parser {
                 'errors' => $errors,
                 'comment' => $comment,
                 'release_error' => $release_error,
-                'slug_error' => $slug_error,
-                'visibility_error' => $visibility_error,
                 'release_raw' => $release_raw,
                 'release_normalized' => $release_normalized,
+                'visibility_error' => $visibility_error,
                 'visibility' => $visibility_status,
                 'password' => $visibility_password,
                 'meta_description' => $meta_description,
                 'categories_raw' => $categories_raw,
                 'categories' => $categories_normalized,
+                'slug_error' => $slug_error,
                 'slug_raw' => $slug_line,
                 'slug' => $sanitized_slug,
                 'title' => $title,
-                'markdown' => ltrim( $markdown, '\n' ),
+                'markdown' => ltrim( $markdown, "\n" ),
             ];
         }
 
         /**
         * Build canonical upload markdown ( lines 1–5 header + body ) from editor fields.
         */
-        public static function compose_document( $release_form, $visibility, $password, $meta_description, $slug_line, $title, $comment, $markdown_body ) {
+        public static function compose_document( $comment, $release_form, $visibility, $password, $meta_description, $categories, $slug_line, $title, $markdown_body ) {
             $line1 = trim( ( string ) $comment );
             $line2 = self::release_token_from_form( $release_form );
             $line3 = self::visibility_token_from_status( $visibility, $password );
-            $meta = ( string ) $meta_description;
-            $slug_raw = trim( ( string ) $slug_line );
-            $title_t = trim( ( string ) $title );
-            $body = ltrim( ( string ) $markdown_body, '\n' );
+            $line4 = ( string ) $meta_description;
+            $line5 = '[[' . implode( '::', array_map( function ( $c ) { return trim( ( string ) $c ); }, $categories ) ) . ']]';
+            $line6 = trim( ( string ) $slug_line );
+            $line7 = trim( ( string ) $title );
+            $body = ltrim( ( string ) $markdown_body, "\n" );
 
-            return $line1 . '\n' . $line2 . '\n' . $line3 . '\n' . $meta . '\n' . $slug_raw . '\n' . $title_t . '\n' . $body;
+            return $line1 . "\n" . $line2 . "\n" . $line3 . "\n" . $line4 . "\n" . $line5 . "\n" . $line6 . "\n" . $line7 . "\n" . $body;
         }
 
         /**
@@ -290,28 +291,23 @@ class MI_Parser {
                         private static function parse_categories_line( $line ) {
                             $original = trim( ( string ) $line );
                             if ( $original === '' ) {
-                                return [ 'valid' => true, 'raw' => $original, 'normalized' => [ 'uncategorized' ] ];
+                                return [ 'valid' => true, 'raw' => $original, 'normalized' => [ 'Uncategorized' ] ];
                             }
                             if ( ! preg_match( '/^\[\[(.*)\]\]$/u', $original, $m ) ) {
                                 return [ 'valid' => false, 'raw' => $original, 'normalized' => [] ];
                             }
                             $inner = trim( $m[ 1 ] );
                             if ( $inner === '' || strtolower( $inner ) === 'uncategorized' ) {
-                                return [ 'valid' => true, 'raw' => $original, 'normalized' => [ 'uncategorized' ] ];
+                                return [ 'valid' => true, 'raw' => $original, 'normalized' => [ 'Uncategorized' ] ];
                             }
                             $categories = explode( '::', $inner );
                             // Avoid very long category names that could cause issues.
-                            $isIncludedUncategorized = false;
-                            $normalized = array_map( function ( $p ) {
-                                if ( strtoupper( trim( $p ) ) === 'uncategorized' ) {
-                                    $isIncludedUncategorized = true;
+                            $normalized = [];
+                            foreach ( $categories as $cat ) {
+                                $c = trim( ( string ) $cat );
+                                if ( $c !== '' && strtolower( $c ) !== 'uncategorized' && strlen( $c ) <= 100 ) {
+                                    $normalized[] = $c;
                                 }
-
-                                return sanitize_text_field( trim( $p ) );
-                            }
-                            , $categories );
-                            if ( $isIncludedUncategorized ) {
-                                return [ 'valid' => false, 'raw' => $original, 'normalized' => $normalized ];
                             }
                             return [ 'valid' => true, 'raw' => $original, 'normalized' => $normalized ];
                         }

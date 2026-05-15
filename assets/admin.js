@@ -113,7 +113,7 @@
             var details = (row.errors || []).join('; ');
             parts.push((row.filename || 'unknown.md') + ': ' + details);
         });
-        alert(parts.join('\n'));
+        alert(parts.join("\n"));
         if (rows && rows.length) {
             downloadValidationCsv(rows);
         }
@@ -253,10 +253,11 @@
             $queueEditor.toggleClass('mi-queue-view-mode', ro);
             $('#mi-q-e-save').toggle(!ro);
             $(
-                '#mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-password'
+                '#mi-q-e-comment, #mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-password'
             )
                 .prop('readonly', ro)
                 .prop('disabled', false);
+            $('#mi-q-e-categories').prop('disabled', ro);
             $('input[name="mi-q-e-vis"]').prop('disabled', ro);
             $queueEditor.find('.mi-wp-schedule').attr('data-readonly', ro ? '1' : '');
             if (ro) {
@@ -270,13 +271,9 @@
             }
             setQueueEditorMode(viewOnly);
             currentQueueId = it.id;
-            $('#mi-q-filename').text(it.filename || '');
-            $('#mi-q-e-title').val(it.title || '');
-            $('#mi-q-e-keyword').val(it.keyword || '');
             $('#mi-q-e-comment').val(it.comment || '');
-            $('#mi-q-e-slug').val(it.slug || '');
-            $('#mi-q-e-meta').val(it.meta_description || '');
-            $('#mi-q-e-md').val(buildStructuredMd(it));
+            $('#mi-q-filename').text(it.filename || '');
+            $('#mi-q-e-keyword').val(it.keyword || '');
             $('#mi-q-e-release').val(it.release_date || 'now');
             MIReleaseScheduler.sync('mi-q-e-release');
             $('#mi-q-e-password').val(it.password || '');
@@ -288,6 +285,11 @@
             if (!viewOnly) {
                 syncQueuePasswordField();
             }
+            $('#mi-q-e-meta').val(it.meta_description || '');
+            $('#mi-q-e-categories').val(it.categories || ['Uncategorized']).trigger('change');
+            $('#mi-q-e-slug').val(it.slug || '');
+            $('#mi-q-e-title').val(it.title || '');
+            $('#mi-q-e-md').val(buildStructuredMd(it));
         }
 
         function renderQueue(rows) {
@@ -418,7 +420,6 @@
                 uploadFiles(files);
             }
         });
-
         $tbody.on('change', '.mi-release-input', function () {
             var $tr = $(this).closest('tr');
             var id = $tr.data('id');
@@ -429,7 +430,6 @@
                 }
             });
         });
-
         $tbody.on('click', '.mi-q-remove', function () {
             var $tr = $(this).closest('tr');
             var rid = $tr.data('id');
@@ -449,6 +449,16 @@
                 if (!res.success || !res.data.item) {
                     return;
                 }
+                var cates = res.data.item.categories || [];
+                var allCates = res.data.categories_all || [];
+                var options = [ ... new Set([...cates, ...allCates])];
+                $categories.empty();
+                options.forEach(function (c) {
+                    if (cates.indexOf(c) > -1)
+                        $categories.append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
+                    else
+                        $categories.append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
+                });
                 fillQueueEditorFromItem(res.data.item, viewOnly);
                 $queueEditor.removeClass('mi-hidden');
             });
@@ -472,6 +482,8 @@
          */
         function buildPayloadForImportQueueSave() {
             var md = $('#mi-q-e-md').val();
+            var cmt = String($('#mi-q-e-comment').val() || '').trim();
+            var ctg = $categories.val() || ['Uncategorized'];
             var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
             if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
@@ -483,7 +495,6 @@
             }
             var slug = String($('#mi-q-e-slug').val() || '').trim();
             var title = String($('#mi-q-e-title').val() || '').trim();
-            var cmt = String($('#mi-q-e-comment').val() || '').trim();
             var meta = String($('#mi-q-e-meta').val() || '');
             var kw = String($('#mi-q-e-keyword').val() || '').trim();
             if (!kw) {
@@ -497,13 +508,14 @@
                 payload: {
                     id: currentQueueId,
                     keyword: kw,
+                    comment: cmt,
+                    categories: ctg,
                     release_date: releaseVal,
                     visibility: vis,
                     password: pwd,
                     meta_description: meta,
                     slug: slug,
                     title: title,
-                    comment: cmt,
                     markdown: md,
                 },
             };
@@ -556,7 +568,7 @@
                     var failedRows = (res.data && res.data.failed) || [];
                     if (res.data.failed && res.data.failed.length) {
                         var parts = ['Import failed: ' + String(failedRows.length) + ' invalid file(s).', msg];
-                        msg = parts.join('\n');
+                        msg = parts.join("\n");
                     }
                     alert(msg);
                     if (failedRows.length) {
@@ -740,41 +752,41 @@
          * Lines 1–5 of structured MD come from the side/top inputs; body from textarea lines 6+.
          */
         function buildPayloadForArticleSave() {
-            var cates = $categories.val() || ['uncategorized'];
-
+            var kw = String($('#mi-e-keyword').val() || '').trim();
+            if (!kw) {
+                return { ok: false, message: MIAdmin.i18n.keywordRequired };
+            }
             var cmt = String($('#mi-e-comment').val() || '').trim();
-            var md = $('#mi-e-md').val();
+            var releaseVal = String($('#mi-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
             var vis = $('input[name="mi-e-vis"]:checked').val() || 'private';
             if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
             }
             var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-e-password').val() || '') : '';
-            var releaseVal = String($('#mi-e-release').val() || '').trim();
-            if (!releaseVal) {
-                releaseVal = 'now';
-            }
+            var meta = String($('#mi-e-meta').val() || '');
+            var cates = $categories.val() || ['Uncategorized'];
             var slug = String($('#mi-e-slug').val() || '').trim();
             var title = String($('#mi-e-title').val() || '').trim();
-            var meta = String($('#mi-e-meta').val() || '');
-            var kw = String($('#mi-e-keyword').val() || '').trim();
-            if (!kw) {
-                return { ok: false, message: MIAdmin.i18n.keywordRequired };
-            }
             if (!slug || !title) {
                 return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
             }
+            var md = $('#mi-e-md').val();
             return {
                 ok: true,
                 payload: {
                     id: currentId,
                     keyword: kw,
+                    comment: cmt,
                     release_date: releaseVal,
                     visibility: vis,
                     password: pwd,
                     meta_description: meta,
+                    categories: cates,
                     slug: slug,
                     title: title,
-                    comment: cmt,
                     markdown: md,
                 },
             };
@@ -784,12 +796,8 @@
             if (!a) {
                 return;
             }
-            $('#mi-e-title').val(a.title || '');
             $('#mi-e-keyword').val(a.keyword || '');
             $('#mi-e-comment').val(a.comment || '');
-            $('#mi-e-slug').val(a.slug || '');
-            $('#mi-e-meta').val(a.meta_description || '');
-            $('#mi-e-md').val(buildStructuredMd(a));
             $('#mi-e-release').val(a.release_date || 'now');
             MIReleaseScheduler.sync('mi-e-release');
             $('#mi-e-password').val(a.password || '');
@@ -799,6 +807,11 @@
             }
             $('input[name="mi-e-vis"][value="' + v + '"]').prop('checked', true);
             syncPasswordField();
+            $('#mi-e-meta').val(a.meta_description || '');
+            $categories.val(a.categories || ['Uncategorized']).trigger('change');
+            $('#mi-e-slug').val(a.slug || '');
+            $('#mi-e-title').val(a.title || '');
+            $('#mi-e-md').val(buildStructuredMd(a));
         }
 
         $tbody.on('click', '.mi-a-edit', function () {
@@ -808,10 +821,15 @@
                     return;
                 }
                 var a = res.data.article;
-                var cates = res.data.categories;
+                var wp_cates = res.data.categories;
+                var a_cates = a.categories;
                 $categories.empty();
-                Object.keys(cates).forEach(function (c) {
-                    $categories.append('<option selected value="' + esc(c) + '">' + esc(cates[c].text) + '</option>');
+                currentId = a.id;
+                wp_cates.forEach(function (c) {
+                    if (a_cates.indexOf(c) > -1)
+                        $categories.append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
+                    else
+                        $categories.append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
                 })
                 refillArticleEditorFromPayload(a);
                 $editor.removeClass('mi-hidden');
@@ -831,6 +849,7 @@
         });
 
         $('#mi-e-save').on('click', function () {
+            console.log('Save article', currentId);
             if (!currentId) {
                 return;
             }
@@ -1263,7 +1282,7 @@
                             res.data.failed.forEach(function (f) {
                                 parts.push((f.filename ? f.filename + ': ' : '') + (f.message || ''));
                             });
-                            msg = parts.join('\n');
+                            msg = parts.join("\n");
                         }
                         alert(msg);
                         if (failedRows.length) {

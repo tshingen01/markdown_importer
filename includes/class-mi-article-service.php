@@ -115,7 +115,6 @@ class MI_Article_Service {
         if ( $status !== 'publish' && $status !== 'future' ) {
             $password = '';
         }
-
         $post_id = wp_insert_post(
             [
                 'post_type' => MI_Post_Type::POST_TYPE,
@@ -134,10 +133,31 @@ class MI_Article_Service {
         if ( is_wp_error( $post_id ) ) {
             return $post_id;
         }
-
         self::attach_meta( $post_id, $parsed, $release );
 
+        $term_ids = [];
+        foreach( $parsed[ 'categories' ] as $cat_name) {
+            $cat_name = trim( ( string ) $cat_name );
+            if(term_exists( $cat_name, 'category' ) ) {
+                $term = get_term_by( 'name', $cat_name, 'category' );
+                if ( $term && ! is_wp_error( $term ) ) {
+                    $term_ids[] = ( int ) $term->term_id;
+                }
+            } else {
+                $new = wp_insert_term( $cat_name, 'category' );
+                if ( ! is_wp_error( $new ) && isset( $new[ 'term_id' ] ) ) {
+                    $term_ids[] = ( int ) $new[ 'term_id' ];
+                }
+            }
+        }
+
+        wp_set_post_terms(
+            $post_id,
+            $term_ids,
+            'category',
+        );
         return $post_id;
+        
     }
 
     /**
@@ -330,7 +350,6 @@ class MI_Article_Service {
 
         public static function attach_meta( $post_id, array $parsed, $release_normalized ) {
             update_post_meta( $post_id, self::META_COMMENT, $parsed[ 'comment' ] );
-            update_post_meta( $post_id, self::META_CATEGORIES, $parsed[ 'categories' ]); 
             update_post_meta( $post_id, self::META_KEYWORD, $parsed[ 'keyword' ] );
             update_post_meta( $post_id, self::META_MARKDOWN, $parsed[ 'markdown' ] );
             MI_Cta::ensure_from_markdown( isset( $parsed[ 'markdown' ] ) ? ( string ) $parsed[ 'markdown' ] : '' );
@@ -391,6 +410,8 @@ class MI_Article_Service {
                 return;
             }
             self::clear_scheduled_upgrade( $post_id );
+            delete_post_meta( $post_id, self::META_COMMENT );
+            delete_post_meta( $post_id, self::META_CATEGORIES );
             delete_post_meta( $post_id, self::META_KEYWORD );
             delete_post_meta( $post_id, self::META_MARKDOWN );
             delete_post_meta( $post_id, '_mi_image_map' );
@@ -405,8 +426,9 @@ class MI_Article_Service {
             if ( ! $post || $post->post_type !== MI_Post_Type::POST_TYPE ) {
                 return null;
             }
-            $kw = ( string ) get_post_meta( $post_id, self::META_KEYWORD, true );
             $cmt = ( string ) get_post_meta( $post_id, self::META_COMMENT, true );
+            $cates = ( array ) get_the_category( $post_id );
+            $kw = ( string ) get_post_meta( $post_id, self::META_KEYWORD, true );
             $md = ( string ) get_post_meta( $post_id, self::META_MARKDOWN, true );
             $rel = ( string ) get_post_meta( $post_id, self::META_RELEASE, true );
             $meta = ( string ) get_post_meta( $post_id, '_mi_meta_description', true );
@@ -415,9 +437,10 @@ class MI_Article_Service {
             }
 
             return [
+                'comment' => $cmt,
+                'categories' => array_map( function ( $c ) { return $c->name; }, $cates ), 
                 'id' => ( int ) $post_id,
                 'keyword' => $kw,
-                'comment' => $cmt,
                 'slug' => $post->post_name,
                 'title' => $post->post_title,
                 'meta_description' => $meta,
@@ -431,14 +454,14 @@ class MI_Article_Service {
         /**
         * @return true|WP_Error
         */
-        public static function save_article_from_request( $post_id, $title, $keyword, $slug, $meta_description, $comment, $markdown, $release_date, $visibility, $password = '' ) {
+        public static function save_article_from_request( $post_id, $keyword,$comment, $release_date, $visibility, $password = '', $meta_description, $categories, $slug, $title, $markdown ) {
             $slug = sanitize_title( $slug );
             $uniq = self::validate_article_uniqueness( ( int ) $post_id, $keyword, $slug );
             if ( is_wp_error( $uniq ) ) {
                 return $uniq;
-            }
-            $comment = trim( ( string ) $comment );
+                }
             $keyword = trim( ( string ) $keyword );
+            $comment = trim( ( string ) $comment );
             $release = MI_Staging::parse_release_input( $release_date );
             $post_date = MI_Staging::post_date_from_release( $release );
             $requested = in_array( $visibility, [ 'publish', 'private', 'draft', 'future' ], true ) ? $visibility : 'private';
@@ -459,6 +482,26 @@ class MI_Article_Service {
                     'post_date' => $post_date,
                     'post_date_gmt' => get_gmt_from_date( $post_date ),
                 ]
+            );
+
+            $term_ids = [];
+
+            foreach ( $categories as $cat_name ) {
+                $cat_name = trim( (string) $cat_name );
+                $term = term_exists( $cat_name, 'category' );
+                if ( $term ) {
+                    $term_ids[] = (int) $term['term_id'];
+                } else {
+                    $new = wp_insert_term( $cat_name, 'category' );
+                    if ( ! is_wp_error( $new ) ) {
+                        $term_ids[] = (int) $new['term_id'];
+                    }
+                }
+            }
+            wp_set_post_terms(
+                $post_id,
+                $term_ids,
+                'category',
             );
             update_post_meta( $post_id, self::META_KEYWORD, $keyword );
             update_post_meta( $post_id, self::META_COMMENT, $comment );

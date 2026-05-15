@@ -19,10 +19,11 @@ if (! defined('ABSPATH')) {
         <div class="mi-md-template">
             <h3><?php esc_html_e('Markdown template (copy/paste)', 'markdown-importer'); ?></h3>
             <textarea class="mi-md-template-code" readonly spellcheck="false">
-Comment
+This Article is about Bitcoin
 [[2026_05_21::18_55]]
 [[PRIVATE]]
 This article will explain to you how to invest in Bitcoin
+[[Bitcoin::Coin]]
 invest-in-bitcoin-today
 How to Invest in Bitcoin
 # How to Invest in Bitcoin
