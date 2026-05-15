@@ -27,6 +27,8 @@ class MI_Ajax {
             'mi_delete_cta',
             'mi_fetch_upgrade_queue',
             'mi_upgrade_upload',
+            'mi_get_upgrade_queue_item',
+            'mi_save_upgrade_queue_item',
             'mi_patch_upgrade_item',
             'mi_remove_upgrade_item',
             'mi_confirm_upgrade',
@@ -871,16 +873,17 @@ class MI_Ajax {
                 'batch' => $batch,
                 'filename' => $name,
                 'files_dir' => $dir,
-                'keyword' => $keyword,
                 'target_post_id' => $target,
-                'slug' => $validation[ 'slug' ],
-                'title' => $validation[ 'title' ],
-                'meta_description' => $validation[ 'meta_description' ],
+                'keyword' => $keyword,
                 'comment' => isset( $validation[ 'comment' ] ) ? ( string ) $validation[ 'comment' ] : '',
-                'markdown' => $validation[ 'markdown' ],
                 'release_date' => MI_Staging::release_for_form( $rel ),
                 'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : 'private',
                 'password' => isset( $validation[ 'password' ] ) ? ( string ) $validation[ 'password' ] : '',
+                'meta_description' => $validation[ 'meta_description' ],
+                'categories' => array_values( array_map( 'strval', $validation[ 'categories' ] ) ),
+                'slug' => $validation[ 'slug' ],
+                'title' => $validation[ 'title' ],
+                'markdown' => $validation[ 'markdown' ],
                 'error' => '',
             ];
         }
@@ -942,6 +945,72 @@ class MI_Ajax {
         wp_send_json_success( [ 'queue' => self::decorate_upgrade_queue( $queue ) ] );
     }
 
+    public static function get_upgrade_queue_item() {
+        self::auth();
+        $uid = get_current_user_id();
+        $id = isset( $_POST[ 'id' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'id' ] ) ) : '';
+        $queue = self::read_upgrade_queue( $uid );
+        foreach ( $queue as $item ) {
+            if ( $item[ 'id' ] === $id ) {
+                $wp_categories = get_categories( [
+                    'hide_empty' => false,
+                ] );
+                $categories = [];
+                foreach ( $wp_categories as $cat ) {
+                    $categories[] = $cat->name;
+                }
+                wp_send_json_success( [ 'item' => $item, 'categories' => $categories ] );
+                return;
+            }
+        }
+        wp_send_json_error( [ 'message' => __( 'Queue item not found.', 'markdown-importer' ) ] );
+    }
+
+    public static function save_upgrade_queue_item() {
+        self::auth();
+        $uid = get_current_user_id();
+        $id = isset( $_POST[ 'id' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'id' ] ) ) : '';
+        $keyword = isset( $_POST[ 'keyword' ] ) ? wp_unslash( $_POST[ 'keyword' ] ) : '';
+        $comment = isset( $_POST[ 'comment' ] ) ? wp_unslash( $_POST[ 'comment' ] ) : '';
+        $release = isset( $_POST[ 'release_date' ] ) ? wp_unslash( $_POST[ 'release_date' ] ) : 'now';
+        $visibility = isset( $_POST[ 'visibility' ] ) ? sanitize_key( wp_unslash( $_POST[ 'visibility' ] ) ) : 'private';
+        $password = isset( $_POST[ 'password' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'password' ] ) ) : '';
+        $meta_description = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
+        $markdown = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
+        $categories = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
+        $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
+        $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
+
+        $queue = self::read_upgrade_queue( $uid );
+        $found = false;
+        foreach ( $queue as &$item ) {
+            if ( $item[ 'id' ] === $id ) {
+                // Update fields
+                $item[ 'keyword' ] = $keyword;
+                $item[ 'comment' ] = $comment;
+                $item[ 'release_date' ] = MI_Staging::parse_release_input( $release );
+                $item[ 'visibility' ] = $visibility;
+                $item[ 'password' ] = $password;
+                $item[ 'meta_description' ] = $meta_description;
+                $item[ 'markdown' ] = $markdown;
+                $item[ 'categories' ] = $categories;
+                $item[ 'slug' ] = $slug;
+                $item[ 'title' ] = $title;
+                $found = true;
+                break;
+            }
+        }
+
+        unset( $item );
+        if ( ! $found ) {
+            wp_send_json_error( [ 'message' => __( 'Queue item not found.', 'markdown-importer' ) ] );
+        }
+        self::write_upgrade_queue( $uid, $queue );
+        wp_send_json_success( [ 'queue' => self::decorate_upgrade_queue( $queue ) ] );
+        var_dump( $queue );
+        die();
+    }
+
     public static function remove_upgrade_item() {
         self::auth();
         $uid = get_current_user_id();
@@ -971,14 +1040,14 @@ class MI_Ajax {
                 continue;
             }
             $parsed = [
-                'title' => $item[ 'title' ],
-                'slug' => $item[ 'slug' ],
-                'meta_description' => $item[ 'meta_description' ],
-                'comment' => $item[ 'comment' ],
-                'markdown' => $item[ 'markdown' ],
                 'keyword' => $item[ 'keyword' ],
+                'comment' => $item[ 'comment' ],
                 'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : '',
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
+                'meta_description' => $item[ 'meta_description' ],
+                'slug' => $item[ 'slug' ],
+                'title' => $item[ 'title' ],
+                'markdown' => $item[ 'markdown' ],
             ];
             $result = MI_Article_Service::schedule_or_apply_upgrade(
                 ( int ) $item[ 'target_post_id' ],

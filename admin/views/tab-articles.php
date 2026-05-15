@@ -25,51 +25,55 @@ if (! defined('ABSPATH')) {
         <tbody></tbody>
     </table>
 
-    <div id="mi-article-editor" class="mi-article-editor mi-hidden">
-        <hr />
-        <h3><?php esc_html_e('Edit article', 'markdown-importer'); ?></h3>
-        <div class="mi-editor-grid">
-            <div class="mi-editor-main">
-                <label class="mi-label"><?php esc_html_e('Comment', 'markdown-importer'); ?></label>
-                <input type="text" class="widefat" id="mi-e-comment" placeholder="<?php esc_attr_e('Optional comment', 'markdown-importer'); ?>" />
-                
-                <label class="mi-label"><?php esc_html_e('Categories', 'markdown-importer'); ?></label>
-                <select id="mi-e-categories" name="mi-e-categories[]" multiple ></select>
-                
-                <label class="mi-label"><?php esc_html_e('Title', 'markdown-importer'); ?></label>
-                <input type="text" class="widefat" id="mi-e-title" />
-
-                
-                <label class="mi-label"><?php esc_html_e('Keyword', 'markdown-importer'); ?></label>
-                <input type="text" class="widefat" id="mi-e-keyword" placeholder="<?php esc_attr_e('From filename; must be unique', 'markdown-importer'); ?>" />
-
-                <label class="mi-label"><?php esc_html_e('URL Slug', 'markdown-importer'); ?></label>
-                <input type="text" class="widefat" id="mi-e-slug" />
-
-                <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
-                <textarea class="widefat" rows="2" id="mi-e-meta"></textarea>
-
-                <label class="mi-label"><?php esc_html_e('Article Content', 'markdown-importer'); ?></label>
-                <textarea class="widefat mi-code" rows="16" id="mi-e-md"></textarea>
-            </div>
-            <div class="mi-editor-side">
-                <div class="mi-side-box">
-                    <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>: <br />
-                    <label><input type="radio" name="mi-e-vis" value="draft" /> <?php esc_html_e('Draft', 'markdown-importer'); ?></label><br />
-                    <label><input type="radio" name="mi-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label><br />
-                    <label><input type="radio" name="mi-e-vis" value="future" /> <?php esc_html_e('Scheduled', 'markdown-importer'); ?></label><br />
-                    <label><input type="radio" name="mi-e-vis" value="publish" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
-                    <label class="mi-label" for="mi-e-password"><?php esc_html_e('Password when public or scheduled (optional)', 'markdown-importer'); ?></label>
-                    <input type="text" class="widefat" id="mi-e-password" />
+    <div class="mi-modal" id="mi-article-modal">
+        <div class="mi-modal-content">
+            <span class="mi-modal-close" id="mi-a-modal-close">&times;</span>
+            <h3><?php esc_html_e('Edit article', 'markdown-importer'); ?></h3>
+            <div id="mi-article-editor" class="mi-article-editor">
+                <div class="mi-editor-grid">
+                    <div class="mi-editor-main">
+                        <label class="mi-label"><?php esc_html_e('Comment', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-e-comment" placeholder="<?php esc_attr_e('Optional comment', 'markdown-importer'); ?>" />
+                        
+                        <label class="mi-label"><?php esc_html_e('Categories', 'markdown-importer'); ?></label>
+                        <select id="mi-e-categories" name="mi-e-categories[]" multiple ></select>
+                        
+                        <label class="mi-label"><?php esc_html_e('Title', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-e-title" />
+        
+                        
+                        <label class="mi-label"><?php esc_html_e('Keyword', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-e-keyword" placeholder="<?php esc_attr_e('From filename; must be unique', 'markdown-importer'); ?>" />
+        
+                        <label class="mi-label"><?php esc_html_e('URL Slug', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-e-slug" />
+        
+                        <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
+                        <textarea class="widefat" rows="2" id="mi-e-meta"></textarea>
+        
+                        <label class="mi-label"><?php esc_html_e('Article Content', 'markdown-importer'); ?></label>
+                        <textarea class="widefat mi-code" rows="16" id="mi-e-md"></textarea>
+                    </div>
+                    <div class="mi-editor-side">
+                        <div class="mi-side-box">
+                            <strong><?php esc_html_e('Visibility', 'markdown-importer'); ?></strong>: <br />
+                            <label><input type="radio" name="mi-e-vis" value="draft" /> <?php esc_html_e('Draft', 'markdown-importer'); ?></label><br />
+                            <label><input type="radio" name="mi-e-vis" value="private" /> <?php esc_html_e('Private', 'markdown-importer'); ?></label><br />
+                            <label><input type="radio" name="mi-e-vis" value="future" /> <?php esc_html_e('Scheduled', 'markdown-importer'); ?></label><br />
+                            <label><input type="radio" name="mi-e-vis" value="publish" /> <?php esc_html_e('Public', 'markdown-importer'); ?></label><br />
+                            <label class="mi-label" for="mi-e-password"><?php esc_html_e('Password when public or scheduled (optional)', 'markdown-importer'); ?></label>
+                            <input type="text" class="widefat" id="mi-e-password" />
+                        </div>
+                        <?php
+                        $variant = 'article';
+                        require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
+                        ?>
+                        <div class="mi-side-actions">
+                            <button type="button" class="button button-primary" id="mi-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
+                        </div>
+                    </div>
                 </div>
-                <?php
-                $variant = 'article';
-                require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
-                ?>
-                <div class="mi-side-actions">
-                    <button type="button" class="button button-primary" id="mi-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
-                </div>
             </div>
-        </div>
     </div>
+
 </div>

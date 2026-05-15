@@ -71,8 +71,8 @@ Intro text...
         <div class="mi-modal" id="mi-queue-editor-modal">
             <div class="mi-modal-content">
                 <span class="mi-modal-close" id="mi-q-e-modal-close">&times;</span>
+                <h3><?php esc_html_e('View / edit staged article', 'markdown-importer'); ?></h3>
                 <div id="mi-queue-editor" class="mi-article-editor mi-queue-editor">
-                    <h3><?php esc_html_e('View / edit staged article', 'markdown-importer'); ?></h3>
                     <p class="description" id="mi-queue-editor-filename-wrap">
                         <?php esc_html_e('File:', 'markdown-importer'); ?>
                         <code id="mi-q-filename"></code>
