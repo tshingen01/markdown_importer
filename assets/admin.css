@@ -418,7 +418,9 @@
 /* Icon-only action buttons */
 .mi-inline-actions .button-link-delete,
 .mi-table .mi-a-edit,
+.mi-table .mi-ua-edit,
 .mi-table .mi-a-del,
+.mi-table .mi-ua-del,
 .mi-table .button[title="Upgrade tab"] {
     width: 32px;
     min-width: 32px;
@@ -434,7 +436,9 @@
 
 .mi-inline-actions .button-link-delete .dashicons,
 .mi-table .mi-a-edit .dashicons,
+.mi-table .mi-ua-edit .dashicons,
 .mi-table .mi-a-del .dashicons,
+.mi-table .mi-ua-del .dashicons,
 .mi-table .button[title="Upgrade tab"] .dashicons {
     width: 16px;
     height: 16px;
@@ -442,24 +446,24 @@
     line-height: 16px;
 }
 
-.mi-table .mi-a-edit {
+.mi-table .mi-a-edit, .mi-table .mi-ua-edit {
     border-color: #c9d2de;
     background: #f8fbff;
 }
 
-.mi-table .mi-a-edit:hover {
+.mi-table .mi-a-edit:hover, .mi-table .mi-ua-edit:hover {
     border-color: #2271b1;
     background: #edf6ff;
     color: #0a4b78;
 }
 
-.mi-table .mi-a-del {
+.mi-table .mi-a-del, .mi-table .mi-ua-del {
     border-color: #e7c6c8;
     background: #fff7f7;
     color: #b32d2e;
 }
 
-.mi-table .mi-a-del:hover {
+.mi-table .mi-a-del:hover, .mi-table .mi-ua-del:hover {
     border-color: #b32d2e;
     background: #ffeef0;
     color: #8e1e21;

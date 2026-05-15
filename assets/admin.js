@@ -266,6 +266,7 @@
         }
 
         function fillQueueEditorFromItem(it, viewOnly) {
+            console.log(it);
             if (!it) {
                 return;
             }
@@ -451,6 +452,7 @@
                 if (!res.success || !res.data.item) {
                     return;
                 }
+                $editorModal.addClass('mi-modal-open');
                 var cates = res.data.item.categories || [];
                 var allCates = res.data.categories_all || [];
                 var options = [ ... new Set([...cates, ...allCates])];
@@ -462,7 +464,6 @@
                         $('#mi-q-e-categories').append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
                 });
                 fillQueueEditorFromItem(res.data.item, viewOnly);
-                $editorModal.addClass('mi-modal-open');
             });
         }
 
@@ -1111,9 +1112,19 @@
         var $qBody = $('#mi-upgrade-queue-table tbody');
         var $queueEditorModal = $('#mi-upgrade-queue-editor-modal');
         var $queueEditor = $('#mi-upgrade-queue-editor');
+        var $articleModal = $('#mi-upgrade-article-modal');
+        var $articleEditor = $('#mi-upgrade-article-editor');
         var currentQueueId = null;
+        var currentId = null;
 
         $('#mi-uq-e-categories').select2({
+            tags: true,
+            tokenSeparators: [','],
+            placeholder: 'Select or type value',
+            allowClear: true,
+            width: '100%'
+        });
+        $('#mi-ua-e-categories').select2({
             tags: true,
             tokenSeparators: [','],
             placeholder: 'Select or type value',
@@ -1124,6 +1135,15 @@
         function syncUpgradeQueuePasswordField() {
             var vis = $('input[name="mi-uq-e-vis"]:checked').val();
             var $pwd = $('#mi-uq-e-password');
+            var isPublic = vis === 'publish' || vis === 'future';
+            $pwd.prop('disabled', !isPublic);
+            if (!isPublic) {
+                $pwd.val('');
+            }
+        }
+        function syncUpgradeArticlePasswordField() {
+            var vis = $('input[name="mi-ua-e-vis"]:checked').val();
+            var $pwd = $('#mi-ua-e-password');
             var isPublic = vis === 'publish' || vis === 'future';
             $pwd.prop('disabled', !isPublic);
             if (!isPublic) {
@@ -1163,6 +1183,27 @@
             $('#mi-uq-e-title').val(it.title || '');
             $('#mi-uq-e-md').val(buildStructuredMd(it));
         }
+        function fillUpgradeArticleEditorFromItem(a) {
+            if (!a) {
+                return;
+            }
+            $('#mi-ua-e-keyword').val(a.keyword || '');
+            $('#mi-ua-e-comment').val(a.comment || '');
+            $('#mi-ua-e-release').val(a.release_date || 'now');
+            MIReleaseScheduler.sync('mi-ua-e-release');
+            $('#mi-ua-e-password').val(a.password || '');
+            var v = String(a.visibility || 'private').toLowerCase();
+            if (v !== 'publish' && v !== 'private' && v !== 'draft' && v !== 'future') {
+                v = 'private';
+            }
+            $('input[name="mi-ua-e-vis"][value="' + v + '"]').prop('checked', true);
+            syncUpgradeArticlePasswordField();
+            $('#mi-ua-e-meta').val(a.meta_description || '');
+            $('#mi-ua-e-categories').val(a.categories || ['Uncategorized']).trigger('change');
+            $('#mi-ua-e-slug').val(a.slug || '');
+            $('#mi-ua-e-title').val(a.title || '');
+            $('#mi-ua-e-md').val(buildStructuredMd(a));
+        }
 
         function loadArticles(term) {
             ajax('mi_list_articles', { search: term || '' }).done(function (res) {
@@ -1172,14 +1213,20 @@
                 $artBody.empty();
                 var rows = res.data.articles || [];
                 if (!rows.length) {
-                    renderEmptyTableRow($artBody, 5, 'No articles found.');
+                    renderEmptyTableRow($artBody, 8, 'No articles found.');
                     return;
                 }
-                rows.forEach(function (a, idx) {
-                    var vis = visibilityLabel(a.visibility, a.password || '');
-                    var rd = a.release_date || '';
+                
+                rows.forEach(function (a) {
+                    var vis = String(a.visibility || 'private').toLowerCase();
+                    if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
+                        vis = 'private';
+                    }
+                    var visText = visibilityLabel(vis, a.password || '');
                     var tr =
-                        '<tr>' +
+                        '<tr data-id="' +
+                        esc(a.id) +
+                        '">' +
                         '<td>' +
                         esc(a.id) +
                         '</td>' +
@@ -1189,11 +1236,41 @@
                         '<td>' +
                         esc(a.slug) +
                         '</td>' +
+                        '<td class="mi-visibility-box">' +
+                        '<select class="mi-vis-select">' +
+                        '<option value="draft" ' +
+                        (vis === 'draft' ? 'selected' : '') +
+                        '>Draft</option>' +
+                        '<option value="private" ' +
+                        (vis === 'private' ? 'selected' : '') +
+                        '>Private</option>' +
+                        '<option value="future" ' +
+                        (vis === 'future' ? 'selected' : '') +
+                        '>' +
+                        esc(MIAdmin.i18n.visibilityScheduled || 'Scheduled') +
+                        '</option>' +
+                        '<option value="publish" ' +
+                        (vis === 'publish' ? 'selected' : '') +
+                        '>Public</option>' +
+                        '</select> ' +
+                        '<span class="mi-vis-note">' +
+                        esc(visText) +
+                        '</span></td>' +
                         '<td>' +
-                        esc(vis) +
+                        (a.permalink
+                            ? '<a href="' +
+                            esc(a.permalink) +
+                            '" class="mi-preview-link" target="_blank" rel="noopener noreferrer">' +
+                            esc(MIAdmin.previewLabel || 'Preview') +
+                            ' <span class="dashicons dashicons-external"></span></a>'
+                            : '') +
                         '</td>' +
                         '<td>' +
-                        esc(rd) +
+                        '<button type="button" class="button mi-ua-edit" title="Edit"><span class="dashicons dashicons-edit"></span></button> ' +
+                        '<button type="button" class="button mi-ua-del" title="Delete"><span class="dashicons dashicons-trash"></span></button> ' +
+                        '<a class="button" href="' +
+                        esc(MIAdmin.upgradeTabUrl) +
+                        '" title="Upgrade tab"><span class="dashicons dashicons-media-document"></span></a>' +
                         '</td>' +
                         '</tr>';
                     $artBody.append(tr);
@@ -1299,6 +1376,105 @@
             });
         }
 
+
+        function buildPayloadForUpgradeQueueSave() {
+            var md = $('#mi-uq-e-md').val();
+            var cmt = String($('#mi-uq-e-comment').val() || '').trim();
+            var ctg = $('#mi-uq-e-categories').val().length > 0 ? $('#mi-uq-e-categories').val() : ['Uncategorized'];
+            if( $('#mi-uq-e-categories').val().length > 1) {
+                ctg = [];
+                $('#mi-uq-e-categories').val().forEach(c => {
+                    if(c !== 'Uncategorized') {
+                        ctg.push(c);
+                    }
+                });
+            }
+            var vis = $('input[name="mi-uq-e-vis"]:checked').val() || 'private';
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
+                vis = 'private';
+            }
+            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-uq-e-password').val() || '') : '';
+            var releaseVal = String($('#mi-uq-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
+            var slug = String($('#mi-uq-e-slug').val() || '').trim();
+            var title = String($('#mi-uq-e-title').val() || '').trim();
+            var meta = String($('#mi-uq-e-meta').val() || '');
+            var kw = String($('#mi-uq-e-keyword').val() || '').trim();
+            if (!kw) {
+                return { ok: false, message: MIAdmin.i18n.keywordRequired };
+            }
+            if (!slug || !title) {
+                return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
+            }
+            return {
+                ok: true,
+                payload: {
+                    id: currentQueueId,
+                    keyword: kw,
+                    comment: cmt,
+                    release_date: releaseVal,
+                    visibility: vis,
+                    password: pwd,
+                    meta_description: meta,
+                    categories: ctg,
+                    slug: slug,
+                    title: title,
+                    markdown: md,
+                },
+            };
+        }
+
+        function buildPayloadForUpgradeArticleSave() {
+            var kw = String($('#mi-ua-e-keyword').val() || '').trim();
+            if (!kw) {
+                return { ok: false, message: MIAdmin.i18n.keywordRequired };
+            }
+            var cmt = String($('#mi-ua-e-comment').val() || '').trim();
+            var releaseVal = String($('#mi-ua-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
+            var vis = $('input[name="mi-ua-e-vis"]:checked').val() || 'private';
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
+                vis = 'private';
+            }
+            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-ua-e-password').val() || '') : '';
+            var meta = String($('#mi-ua-e-meta').val() || '');
+            var ctg = $('#mi-ua-e-categories').val().length > 0 ? $('#mi-ua-e-categories').val() : ['Uncategorized'];
+            if( $('#mi-ua-e-categories').val().length > 1) {
+                ctg = [];
+                $('#mi-ua-e-categories').val().forEach(c => {
+                    if(c !== 'Uncategorized') {
+                        ctg.push(c);
+                    }
+                });
+            }
+            var slug = String($('#mi-ua-e-slug').val() || '').trim();
+            var title = String($('#mi-ua-e-title').val() || '').trim();
+            if (!slug || !title) {
+                return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
+            }
+            var md = $('#mi-ua-e-md').val();
+            return {
+                ok: true,
+                payload: {
+                    id: currentId,
+                    keyword: kw,
+                    comment: cmt,
+                    release_date: releaseVal,
+                    visibility: vis,
+                    password: pwd,
+                    meta_description: meta,
+                    categories: ctg,
+                    slug: slug,
+                    title: title,
+                    markdown: md,
+                },
+            };
+        }
+
         $('#mi-upgrade-file-picker').on('click', function () {
             $('#mi-upgrade-file-input').trigger('click');
         });
@@ -1350,7 +1526,6 @@
             return $.when.apply($, requests);
         }
 
-
         $qBody.on('click', '.mi-uq-edit', function () {
             var id = $(this).closest('tr').data('id');
             if (!id) {
@@ -1377,6 +1552,28 @@
             });
         });
 
+        $artBody.on('click', '.mi-ua-edit', function () {
+            var id = $(this).closest('tr').data('id');
+            ajax('mi_get_article', { id: id }).done(function (res) {
+                if (!res.success) {
+                    return;
+                }
+                var a = res.data.article;
+                var wp_cates = res.data.categories;
+                var a_cates = a.categories;
+                $('#mi-ua-e-categories').empty();
+                currentId = a.id;
+                wp_cates.forEach(function (c) {
+                    if (a_cates.indexOf(c) > -1)
+                        $('#mi-ua-e-categories').append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
+                    else
+                        $('#mi-ua-e-categories').append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
+                })
+                fillUpgradeArticleEditorFromItem(a);
+                $articleModal.addClass('mi-modal-open');
+            });
+        });
+
         $qBody.on('click', '.mi-uq-remove', function () {
             ajax('mi_remove_upgrade_item', { id: $(this).closest('tr').data('id') }).done(function (res) {
                 if (res.success) {
@@ -1385,58 +1582,30 @@
             });
         });
 
-        $queueEditor.on('change', 'input[name="mi-q-e-vis"]', function () {
+        $artBody.on('click', '.mi-ua-del', function () {
+            if (!window.confirm(MIAdmin.i18n.confirmDelete)) {
+                return;
+            }
+            var id = $(this).closest('tr').data('id');
+            ajax('mi_delete_article', { id: id }).done(function (res) {
+                if (res.success) {
+                    if (currentId === id) {
+                        currentId = null;
+                    }
+                    loadArticles($('#mi-upgrade-search').val());
+                }
+            });
+        });
+
+
+        $queueEditor.on('change', 'input[name="mi-uq-e-vis"]', function () {
             syncQueuePasswordField();
         });
 
-        function buildPayloadForUpgradeQueueSave() {
-            var md = $('#mi-uq-e-md').val();
-            var cmt = String($('#mi-uq-e-comment').val() || '').trim();
-            var ctg = $('#mi-uq-e-categories').val().length > 0 ? $('#mi-uq-e-categories').val() : ['Uncategorized'];
-            if( $('#mi-uq-e-categories').val().length > 1) {
-                ctg = [];
-                $('#mi-uq-e-categories').val().forEach(c => {
-                    if(c !== 'Uncategorized') {
-                        ctg.push(c);
-                    }
-                });
-            }
-            var vis = $('input[name="mi-uq-e-vis"]:checked').val() || 'private';
-            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
-                vis = 'private';
-            }
-            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-uq-e-password').val() || '') : '';
-            var releaseVal = String($('#mi-uq-e-release').val() || '').trim();
-            if (!releaseVal) {
-                releaseVal = 'now';
-            }
-            var slug = String($('#mi-uq-e-slug').val() || '').trim();
-            var title = String($('#mi-uq-e-title').val() || '').trim();
-            var meta = String($('#mi-uq-e-meta').val() || '');
-            var kw = String($('#mi-uq-e-keyword').val() || '').trim();
-            if (!kw) {
-                return { ok: false, message: MIAdmin.i18n.keywordRequired };
-            }
-            if (!slug || !title) {
-                return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
-            }
-            return {
-                ok: true,
-                payload: {
-                    id: currentQueueId,
-                    keyword: kw,
-                    comment: cmt,
-                    release_date: releaseVal,
-                    visibility: vis,
-                    password: pwd,
-                    meta_description: meta,
-                    categories: ctg,
-                    slug: slug,
-                    title: title,
-                    markdown: md,
-                },
-            };
-        }
+        $articleEditor.on('change', 'input[name="mi-ua-e-vis"]', function () {
+            syncUpgradeArticlePasswordField();
+        });
+        
 
         $('#mi-uq-e-save').on('click', function () {
             if (!currentQueueId) {
@@ -1459,6 +1628,28 @@
             });
         });
 
+        $('#mi-ua-e-save').on('click', function () {
+            if (!currentId) {
+                return;
+            }
+            var built = buildPayloadForUpgradeArticleSave();
+            if (!built.ok) {
+                alert(built.message || MIAdmin.i18n.error);
+                return;
+            }
+            ajax('mi_save_article', built.payload).done(function (res) {
+                if (res.success) {
+                    $articleModal.removeClass('mi-modal-open');
+                    alert(MIAdmin.i18n.saved);
+                    loadArticles($('#mi-upgrade-search').val());
+                } else if (res.data && res.data.message) {
+                    alert(res.data.message);
+                } else {
+                    alert(MIAdmin.i18n.error);
+                }
+            });
+        });
+
         $('#mi-uq-e-modal-close').on('click', function() {
             currentQueueId = null;
             $queueEditorModal.removeClass('mi-modal-open');
@@ -1467,6 +1658,16 @@
         $('#mi-uq-e-close').on('click', function () {
             currentQueueId = null;
             $queueEditorModal.removeClass('mi-modal-open');
+        });
+
+        $('#mi-ua-e-modal-close').on('click', function() {
+            currentQueueId = null;
+            $articleModal.removeClass('mi-modal-open');
+        });
+
+        $('#mi-ua-e-close').on('click', function () {
+            currentQueueId = null;
+            $articleModal.removeClass('mi-modal-open');
         });
 
         $('#mi-confirm-upgrade').on('click', function () {
@@ -1509,7 +1710,7 @@
 
         $('#mi-upgrade-search-btn').on('click', function () {
             loadArticles($('#mi-upgrade-search').val());
-            var q = $('#mi-upgrade-queue-search').val().toLowerCase();
+            var q = $('#mi-upgrade-search').val().toLowerCase();
             $('#mi-upgrade-queue-table tbody tr').each(function () {
                 var t = $(this).text().toLowerCase();
                 $(this).toggle(t.indexOf(q) !== -1);
