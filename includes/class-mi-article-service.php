@@ -259,6 +259,27 @@ class MI_Article_Service {
         }
 
         self::attach_meta( $post_id, $parsed, $release );
+
+        $term_ids = [];
+        foreach ( $parsed['categories'] as $cat_name ) {
+            $cat_name = trim( (string) $cat_name );
+            $term = term_exists( $cat_name, 'category' );
+            if ( $term ) {
+                $term_ids[] = (int) $term['term_id'];
+            } else {
+                $new = wp_insert_term( $cat_name, 'category' );
+                if ( ! is_wp_error( $new ) ) {
+                    $term_ids[] = (int) $new['term_id'];
+                }
+            }
+        }
+
+        wp_set_post_terms(
+            $post_id,
+            $term_ids,
+            'category',
+        );
+
         return $post_id;
     }
 

@@ -1038,13 +1038,14 @@ class MI_Ajax {
         foreach ( $queue as $item ) {
             if ( ! empty( $item[ 'error' ] ) || empty( $item[ 'target_post_id' ] ) ) {
                 continue;
-            }
+                }
             $parsed = [
                 'keyword' => $item[ 'keyword' ],
                 'comment' => $item[ 'comment' ],
                 'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : '',
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
                 'meta_description' => $item[ 'meta_description' ],
+                'categories' => $item['categories'],
                 'slug' => $item[ 'slug' ],
                 'title' => $item[ 'title' ],
                 'markdown' => $item[ 'markdown' ],
