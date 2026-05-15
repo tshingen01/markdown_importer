@@ -228,10 +228,10 @@
         var $step2 = $('#mi-upload-step2');
         var $tbody = $('#mi-queue-table tbody');
         var $queueEditor = $('#mi-queue-editor');
-        var $categories = $('#mi-q-e-categories');
+        var $editorModal = $('#mi-queue-editor-modal');
         var currentQueueId = null;
 
-        $categories.select2({
+        $('#mi-q-e-categories').select2({
             tags: true,
             tokenSeparators: [','],
             width: '100%',
@@ -300,10 +300,12 @@
                 $step2.addClass('mi-hidden');
                 $step1.removeClass('mi-hidden');
                 $stepLabel.text('Upload [1/2]');
+                $('.mi-actions-row').addClass('mi-hidden');
                 return;
             }
             $step1.addClass('mi-hidden');
             $step2.removeClass('mi-hidden');
+            $('.mi-actions-row').removeClass('mi-hidden');
             $stepLabel.text('Upload [2/2]');
             rows.forEach(function (row) {
                 var err = row.error ? '<div class="mi-error">' + esc(row.error) + '</div>' : '';
@@ -452,15 +454,15 @@
                 var cates = res.data.item.categories || [];
                 var allCates = res.data.categories_all || [];
                 var options = [ ... new Set([...cates, ...allCates])];
-                $categories.empty();
+                $('#mi-q-e-categories').empty();
                 options.forEach(function (c) {
                     if (cates.indexOf(c) > -1)
-                        $categories.append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
+                        $('#mi-q-e-categories').append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
                     else
-                        $categories.append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
+                        $('#mi-q-e-categories').append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
                 });
                 fillQueueEditorFromItem(res.data.item, viewOnly);
-                $queueEditor.removeClass('mi-hidden');
+                $editorModal.addClass('mi-modal-open');
             });
         }
 
@@ -471,7 +473,7 @@
         $tbody.on('click', '.mi-q-edit', function () {
             openQueueEditor($(this).closest('tr').data('id'), false);
         });
-
+    
         $queueEditor.on('change', 'input[name="mi-q-e-vis"]', function () {
             syncQueuePasswordField();
         });
@@ -483,7 +485,7 @@
         function buildPayloadForImportQueueSave() {
             var md = $('#mi-q-e-md').val();
             var cmt = String($('#mi-q-e-comment').val() || '').trim();
-            var ctg = $categories.val() || ['Uncategorized'];
+            var ctg = $('#mi-q-e-categories').val() || ['Uncategorized'];
             var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
             if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
                 vis = 'private';
@@ -533,17 +535,7 @@
             ajax('mi_save_import_queue_item', built.payload).done(function (res) {
                 if (res.success) {
                     renderQueue(res.data.queue || []);
-                    var sid = currentQueueId;
-                    var wasView = $queueEditor.hasClass('mi-queue-view-mode');
-                    ajax('mi_get_import_queue_item', { id: sid })
-                        .done(function (r2) {
-                            if (r2.success && r2.data.item) {
-                                fillQueueEditorFromItem(r2.data.item, wasView);
-                            }
-                        })
-                        .always(function () {
-                            alert(MIAdmin.i18n.saved);
-                        });
+                    $editorModal.removeClass('mi-modal-open');
                 } else if (res.data && res.data.message) {
                     alert(res.data.message);
                 } else {
@@ -554,7 +546,12 @@
 
         $('#mi-q-e-close').on('click', function () {
             currentQueueId = null;
-            $queueEditor.addClass('mi-hidden');
+            $editorModal.removeClass('mi-modal-open');
+        });
+
+        $('#mi-q-e-modal-close').on('click', function () {
+            currentQueueId = null;
+            $editorModal.removeClass('mi-modal-open');
         });
 
         $('#mi-confirm-import').on('click', function () {
@@ -609,7 +606,6 @@
 
         var $tbody = $('#mi-articles-table tbody');
         var $editor = $('#mi-article-editor');
-        var $categories = $('#mi-e-categories');
         var currentId = null;
 
         function syncPasswordField() {
@@ -767,7 +763,7 @@
             }
             var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-e-password').val() || '') : '';
             var meta = String($('#mi-e-meta').val() || '');
-            var cates = $categories.val() || ['Uncategorized'];
+            var cates = $('#mi-e-categories').val() || ['Uncategorized'];
             var slug = String($('#mi-e-slug').val() || '').trim();
             var title = String($('#mi-e-title').val() || '').trim();
             if (!slug || !title) {
@@ -808,7 +804,7 @@
             $('input[name="mi-e-vis"][value="' + v + '"]').prop('checked', true);
             syncPasswordField();
             $('#mi-e-meta').val(a.meta_description || '');
-            $categories.val(a.categories || ['Uncategorized']).trigger('change');
+            $('#mi-e-categories').val(a.categories || ['Uncategorized']).trigger('change');
             $('#mi-e-slug').val(a.slug || '');
             $('#mi-e-title').val(a.title || '');
             $('#mi-e-md').val(buildStructuredMd(a));
@@ -823,20 +819,20 @@
                 var a = res.data.article;
                 var wp_cates = res.data.categories;
                 var a_cates = a.categories;
-                $categories.empty();
+                $('#mi-e-categories').empty();
                 currentId = a.id;
                 wp_cates.forEach(function (c) {
                     if (a_cates.indexOf(c) > -1)
-                        $categories.append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
+                        $('#mi-e-categories').append('<option value="' + esc(c) + '" selected>' + esc(c) + '</option>');
                     else
-                        $categories.append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
+                        $('#mi-e-categories').append('<option value="' + esc(c) + '">' + esc(c) + '</option>');
                 })
                 refillArticleEditorFromPayload(a);
                 $editor.removeClass('mi-hidden');
             });
         });
 
-        $categories.select2({
+        $('#mi-e-categories').select2({
             tags: true,
             tokenSeparators: [','],
             placeholder: 'Select or type value',
