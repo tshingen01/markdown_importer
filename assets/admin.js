@@ -266,7 +266,6 @@
         }
 
         function fillQueueEditorFromItem(it, viewOnly) {
-            console.log(it);
             if (!it) {
                 return;
             }
@@ -297,7 +296,6 @@
             $tbody.empty();
             if (!rows || !rows.length) {
                 currentQueueId = null;
-                $queueEditor.addClass('mi-hidden');
                 $step2.addClass('mi-hidden');
                 $step1.removeClass('mi-hidden');
                 $stepLabel.text('Upload [1/2]');
@@ -600,6 +598,13 @@
                 $(this).toggle(t.indexOf(q) !== -1);
             });
         });
+        $('#mi-queue-search').on('change', function() {
+            var q = $(this).val().toLowerCase();
+            $('#mi-queue-table tbody tr').each(function () {
+                var t = $(this).text().toLowerCase();
+                $(this).toggle(t.indexOf(q) !== -1);
+            });
+        })
     }
 
     /* ---------- Articles ---------- */
@@ -698,10 +703,6 @@
 
         loadList('');
 
-        $('#mi-articles-search-btn').on('click', function () {
-            loadList($('#mi-articles-search').val());
-        });
-
         $tbody.on('change', '.mi-vis-select', function () {
             var rowId = $(this).closest('tr').data('id');
             var status = $(this).val();
@@ -730,22 +731,6 @@
                         .always(reloadTable);
                 } else {
                     reloadTable();
-                }
-            });
-        });
-
-        $tbody.on('click', '.mi-a-del', function () {
-            if (!window.confirm(MIAdmin.i18n.confirmDelete)) {
-                return;
-            }
-            var id = $(this).closest('tr').data('id');
-            ajax('mi_delete_article', { id: id }).done(function (res) {
-                if (res.success) {
-                    if (currentId === id) {
-                        $editor.addClass('mi-hidden');
-                        currentId = null;
-                    }
-                    loadList($('#mi-articles-search').val());
                 }
             });
         });
@@ -846,6 +831,22 @@
             });
         });
 
+        $tbody.on('click', '.mi-a-del', function () {
+            if (!window.confirm(MIAdmin.i18n.confirmDelete)) {
+                return;
+            }
+            var id = $(this).closest('tr').data('id');
+            ajax('mi_delete_article', { id: id }).done(function (res) {
+                if (res.success) {
+                    if (currentId === id) {
+                        $editor.addClass('mi-hidden');
+                        currentId = null;
+                    }
+                    loadList($('#mi-articles-search').val());
+                }
+            });
+        });
+
         $('#mi-e-categories').select2({
             tags: true,
             tokenSeparators: [','],
@@ -882,6 +883,13 @@
 
         $('#mi-a-modal-close').on('click', function () {
             $articleModal.removeClass('mi-modal-open');
+        });
+        
+        $('#mi-articles-search-btn').on('click', function () {
+            loadList($('#mi-articles-search').val());
+        });
+        $('#mi-articles-search').on('change', function() {
+            loadList($(this).val());
         });
     }
 
@@ -1018,10 +1026,6 @@
             }
         }
 
-        $('#mi-cta-search-btn').on('click', function () {
-            renderList($('#mi-cta-search').val());
-        });
-
         $('#mi-cta-add').on('click', function (e) {
             e.preventDefault();
             setNewCtaMode(true);
@@ -1098,6 +1102,14 @@
                 }
             });
         });
+
+        $('#mi-cta-search-btn').on('click', function () {
+            renderList($('#mi-cta-search').val());
+        });
+
+        $('#mi-cta-search').on('change', function () {
+            renderList($(this).val());
+        })
     }
 
     /* ---------- Upgrade ---------- */
@@ -1268,9 +1280,6 @@
                         '<td>' +
                         '<button type="button" class="button mi-ua-edit" title="Edit"><span class="dashicons dashicons-edit"></span></button> ' +
                         '<button type="button" class="button mi-ua-del" title="Delete"><span class="dashicons dashicons-trash"></span></button> ' +
-                        '<a class="button" href="' +
-                        esc(MIAdmin.upgradeTabUrl) +
-                        '" title="Upgrade tab"><span class="dashicons dashicons-media-document"></span></a>' +
                         '</td>' +
                         '</tr>';
                     $artBody.append(tr);
@@ -1711,6 +1720,15 @@
         $('#mi-upgrade-search-btn').on('click', function () {
             loadArticles($('#mi-upgrade-search').val());
             var q = $('#mi-upgrade-search').val().toLowerCase();
+            $('#mi-upgrade-queue-table tbody tr').each(function () {
+                var t = $(this).text().toLowerCase();
+                $(this).toggle(t.indexOf(q) !== -1);
+            });
+        });
+
+        $('#mi-upgrade-search').on('change', function () {
+            loadArticles($(this).val());
+            var q = $(this).val().toLowerCase();
             $('#mi-upgrade-queue-table tbody tr').each(function () {
                 var t = $(this).text().toLowerCase();
                 $(this).toggle(t.indexOf(q) !== -1);
