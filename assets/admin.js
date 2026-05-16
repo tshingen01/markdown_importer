@@ -557,6 +557,13 @@
             $editorModal.removeClass('mi-modal-open');
         });
 
+        $(document).on('keydown', function(e) {
+            if(e.keyCode === 27){
+                currentQueueId = null; 
+                $editorModal.removeClass('mi-modal-open');
+            }
+        })
+
         $('#mi-confirm-import').on('click', function () {
             if (!window.confirm(MIAdmin.i18n.confirmImport)) {
                 return;
@@ -598,6 +605,7 @@
                 $(this).toggle(t.indexOf(q) !== -1);
             });
         });
+
         $('#mi-queue-search').on('change', function() {
             var q = $(this).val().toLowerCase();
             $('#mi-queue-table tbody tr').each(function () {
@@ -859,6 +867,13 @@
             syncPasswordField();
         });
 
+        $(document).on('keydown', function(e) {
+            if(e.keyCode === 27){
+                currentId = null;
+                $articleModal.removeClass('mi-modal-open');
+            }
+        })
+
         $('#mi-e-save').on('click', function () {
             if (!currentId) {
                 return;
@@ -884,7 +899,7 @@
         $('#mi-a-modal-close').on('click', function () {
             $articleModal.removeClass('mi-modal-open');
         });
-        
+       
         $('#mi-articles-search-btn').on('click', function () {
             loadList($('#mi-articles-search').val());
         });
@@ -1678,6 +1693,15 @@
             currentQueueId = null;
             $articleModal.removeClass('mi-modal-open');
         });
+
+        $(document).on('keydown', function(e) {
+            if(e.keyCode === 27){
+                currentQueueId = null; 
+                currentId = null;
+                $queueEditorModal.removeClass('mi-modal-open');
+                $articleModal.removeClass('mi-modal-open');
+            }
+        })
 
         $('#mi-confirm-upgrade').on('click', function () {
             if (!window.confirm(MIAdmin.i18n.confirmUpgrade)) {
