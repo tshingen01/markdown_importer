@@ -998,9 +998,11 @@ class MI_Ajax {
         $meta_description = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
         $markdown = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $categories = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
+        $tags = isset( $_POST[ 'tags' ] ) && is_array( $_POST[ 'tags' ] ) ? array_map( function( $t ) { return trim( wp_unslash( $t ) ); }, $_POST[ 'tags' ] ) : [];
         $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
-
+        $post_settings = isset( $_POST[ 'post_settings' ] ) && is_array( $_POST[ 'post_settings' ] ) ? array_map( function( $ps ) { return $ps == "true"; }, $_POST[ 'post_settings' ] ) : [];
+        
         $queue = self::read_upgrade_queue( $uid );
         $found = false;
         foreach ( $queue as &$item ) {
@@ -1014,8 +1016,10 @@ class MI_Ajax {
                 $item[ 'meta_description' ] = $meta_description;
                 $item[ 'markdown' ] = $markdown;
                 $item[ 'categories' ] = $categories;
+                $item[ 'tags' ] = $tags;
                 $item[ 'slug' ] = $slug;
                 $item[ 'title' ] = $title;
+                $item[ 'post_settings' ] = $post_settings;
                 $found = true;
                 break;
             }
@@ -1065,9 +1069,11 @@ class MI_Ajax {
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
                 'meta_description' => $item[ 'meta_description' ],
                 'categories' => $item['categories'],
+                'tags' => $item['tags'],
                 'slug' => $item[ 'slug' ],
                 'title' => $item[ 'title' ],
                 'markdown' => $item[ 'markdown' ],
+                'post_settings' => $item[ 'post_settings' ],
             ];
             $result = MI_Article_Service::schedule_or_apply_upgrade(
                 ( int ) $item[ 'target_post_id' ],
@@ -1081,6 +1087,8 @@ class MI_Ajax {
                     'release_date' => isset( $item[ 'release_date' ] ) ? ( string ) $item[ 'release_date' ] : '',
                     'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : '',
                     'slug' => isset( $item[ 'slug' ] ) ? ( string ) $item[ 'slug' ] : '',
+                    'tags' => isset( $item[ 'tags' ] ) ? ( array ) $item[ 'tags' ] : [],
+                    'post_settings' => isset( $item[ 'post_settings' ] ) ? ( array ) $item[ 'post_settings' ] : [],
                     'message' => $result->get_error_message(),
                 ];
                 continue;

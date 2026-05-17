@@ -88,6 +88,9 @@ if (! defined('ABSPATH')) {
                         <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
                         <textarea class="widefat" rows="2" id="mi-uq-e-meta"></textarea>
 
+                        <label class="mi-label"><?php esc_html_e('Tags (comma separated)', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-uq-e-tags" placeholder="<?php esc_attr_e('Optional', 'markdown-importer'); ?>" /> 
+
                         <label class="mi-label"><?php esc_html_e('Text Editor', 'markdown-importer'); ?></label>
                         <textarea class="widefat mi-code" rows="16" id="mi-uq-e-md"></textarea>
                     </div>
@@ -105,10 +108,32 @@ if (! defined('ABSPATH')) {
                             $variant = 'up-queue';
                             require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
                         ?>
-                        <div class="mi-side-actions">
-                            <button type="button" class="button button-primary" id="mi-uq-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
-                            <button type="button" class="button" id="mi-uq-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>
-                        </div>
+                        
+                            <div class="mi-checkboxes" id="mi-uq-post-settings">
+                                <label class="mi-check-container">
+                                    <input type="checkbox" name="mi-make-this-post-sticky">
+                                    <span class="mi-checkmark"></span>
+                                    Make this post sticky
+                                </label>
+
+                                <label class="mi-check-container">
+                                    <input type="checkbox" name="mi-allow-comments">
+                                    <span class="mi-checkmark"></span>
+                                    Allow Comments
+                                </label>
+
+                                <label class="mi-check-container">
+                                    <input type="checkbox" name="mi-allow-pings">
+                                    <span class="mi-checkmark"></span>
+                                    Allow Pings
+                                </label>
+
+                            </div>
+                            <div class="mi-side-actions">
+                                <button type="button" class="button mi-uq-remove" id="mi-del-m-btn"><?php esc_html_e('Delete', 'markdown-importer'); ?></button> 
+                                <button type="button" class="button button-primary" id="mi-uq-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
+                                <button type="button" class="button" id="mi-uq-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>
+                            </div>
                     </div>
                 </div>
             </div>
@@ -121,6 +146,10 @@ if (! defined('ABSPATH')) {
             <span class="mi-modal-close" id="mi-ua-e-modal-close">&times;</span>
             <h3><?php esc_html_e('Edit article', 'markdown-importer'); ?></h3>
             <div id="mi-upgrade-article-editor" class="mi-upgrade-article-editor">
+                <a href="" class="mi-preview-link" id="mi-ua-e-preview-link" target="_blank" rel="noopener noreferrer" >
+                    <?php esc_html_e('Preview','markdown-importer'); ?>
+                    <span class="dashicons dashicons-external"></span>
+                </a>
                 <div class="mi-editor-grid">
                     <div class="mi-editor-main">
                         <label class="mi-label"><?php esc_html_e('Comment', 'markdown-importer'); ?></label>
@@ -141,7 +170,10 @@ if (! defined('ABSPATH')) {
         
                         <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
                         <textarea class="widefat" rows="2" id="mi-ua-e-meta"></textarea>
-        
+         
+                        <label class="mi-label"><?php esc_html_e('Tags (comma separated)', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat" id="mi-ua-e-tags" placeholder="<?php esc_attr_e('Optional', 'markdown-importer'); ?>" /> 
+                    
                         <label class="mi-label"><?php esc_html_e('Article Content', 'markdown-importer'); ?></label>
                         <textarea class="widefat mi-code" rows="16" id="mi-ua-e-md"></textarea>
                     </div>
@@ -159,8 +191,30 @@ if (! defined('ABSPATH')) {
                         $variant = 'up-article';
                         require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
                         ?>
+                        
+                        <div class="mi-checkboxes" id="mi-ua-post-settings">
+                            <label class="mi-check-container">
+                                <input type="checkbox" name="mi-make-this-post-sticky">
+                                <span class="mi-checkmark"></span>
+                                Make this post sticky
+                            </label>
+
+                            <label class="mi-check-container">
+                                <input type="checkbox" name="mi-allow-comments">
+                                <span class="mi-checkmark"></span>
+                                Allow Comments
+                            </label>
+
+                            <label class="mi-check-container">
+                                <input type="checkbox" name="mi-allow-pings">
+                                <span class="mi-checkmark"></span>
+                                Allow Pings
+                            </label>
+                        </div>
                         <div class="mi-side-actions">
+                            <button type="button" class="button mi-ua-del" id="mi-del-m-btn"><?php esc_html_e('Delete', 'markdown-importer'); ?></button> 
                             <button type="button" class="button button-primary" id="mi-ua-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
+                            <button type="button" class="button" id="mi-ua-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>
                         </div>
                     </div>
                 </div>

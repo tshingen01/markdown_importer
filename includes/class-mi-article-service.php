@@ -255,6 +255,9 @@ class MI_Article_Service {
         $password = isset( $parsed[ 'password' ] ) ? ( string ) $parsed[ 'password' ] : '';
         $comment = isset( $parsed[ 'comment' ] ) ? ( string ) $parsed[ 'comment' ] : '';
 
+        $allow_comments = $parsed['post_settings']['mi-allow-comments'] && $parsed['post_settings']['mi-allow-comments'] == 'true';
+        $allow_pings = $parsed['post_settings']['mi-allow-pings'] && $parsed['post_settings']['mi-allow-pings'] == 'true';
+        $make_this_post_sticky = $parsed['post_settings']['mi-make-this-post-sticky'] && $parsed['post_settings']['mi-make-this-post-sticky'] == 'true';    
         $update_data = [
             'ID' => $post_id,
             'post_title' => $parsed[ 'title' ],
@@ -262,7 +265,14 @@ class MI_Article_Service {
             'post_excerpt' => $parsed[ 'meta_description' ],
             'post_date' => $post_date,
             'post_date_gmt' => get_gmt_from_date( $post_date ),
+            'comment_status' => $allow_comments ? 'open' : 'closed',
+            'ping_status' => $allow_pings ? 'open' : 'closed',
         ];
+        if($make_this_post_sticky) {
+            stick_post( $post_id );
+        }else {
+            unstick_post( $post_id );
+        }
         if ( in_array( $requested, [ 'publish', 'private', 'draft', 'future' ], true ) ) {
             $update_data[ 'post_status' ] = self::resolve_wp_post_status( $requested, $release );
         }
@@ -280,7 +290,7 @@ class MI_Article_Service {
         }
 
         self::attach_meta( $post_id, $parsed, $release );
-
+        wp_set_post_tags( $post_id, $parsed[ 'tags' ] ?? [] );
         $term_ids = [];
         foreach ( $parsed['categories'] as $cat_name ) {
             $cat_name = trim( (string) $cat_name );

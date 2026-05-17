@@ -1260,9 +1260,14 @@
             syncUpgradeQueuePasswordField();
             $('#mi-uq-e-meta').val(it.meta_description || '');
             $('#mi-uq-e-categories').val(it.categories || ['Uncategorized']).trigger('change');
+            $('#mi-uq-e-tags').val((it.tags || []).join(', '));
             $('#mi-uq-e-slug').val(it.slug || '');
             $('#mi-uq-e-title').val(it.title || '');
             $('#mi-uq-e-md').val(buildStructuredMd(it));
+            $('#mi-uq-post-settings :input').each(function() {
+                let name = $(this).attr('name');
+                $(this).prop('checked', it.post_settings && it.post_settings[name]);
+            });
         }
         function fillUpgradeArticleEditorFromItem(a) {
             if (!a) {
@@ -1281,9 +1286,14 @@
             syncUpgradeArticlePasswordField();
             $('#mi-ua-e-meta').val(a.meta_description || '');
             $('#mi-ua-e-categories').val(a.categories || ['Uncategorized']).trigger('change');
+            $('#mi-ua-e-tags').val((a.tags || []).join(', '));
             $('#mi-ua-e-slug').val(a.slug || '');
             $('#mi-ua-e-title').val(a.title || '');
             $('#mi-ua-e-md').val(buildStructuredMd(a));
+            $('#mi-ua-post-settings :input').each(function() {
+                let name = $(this).attr('name');
+                $(this).prop('checked', a.post_settings && a.post_settings[name]);
+            });
         }
 
         function loadArticles(term) {
@@ -1456,8 +1466,18 @@
 
 
         function buildPayloadForUpgradeQueueSave() {
-            var md = $('#mi-uq-e-md').val();
             var cmt = String($('#mi-uq-e-comment').val() || '').trim();
+            var releaseVal = String($('#mi-uq-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
+            var vis = $('input[name="mi-uq-e-vis"]:checked').val() || 'private';
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
+                vis = 'private';
+            }
+            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-uq-e-password').val() || '') : '';
+            var kw = String($('#mi-uq-e-keyword').val() || '').trim();
+            var meta = String($('#mi-uq-e-meta').val() || '');
             var ctg = $('#mi-uq-e-categories').val().length > 0 ? $('#mi-uq-e-categories').val() : ['Uncategorized'];
             if( $('#mi-uq-e-categories').val().length > 1) {
                 ctg = [];
@@ -1467,19 +1487,17 @@
                     }
                 });
             }
-            var vis = $('input[name="mi-uq-e-vis"]:checked').val() || 'private';
-            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
-                vis = 'private';
-            }
-            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-uq-e-password').val() || '') : '';
-            var releaseVal = String($('#mi-uq-e-release').val() || '').trim();
-            if (!releaseVal) {
-                releaseVal = 'now';
-            }
+            var tags = $('#mi-uq-e-tags').val().split(',').map(t => t.trim()).filter(t => t);
             var slug = String($('#mi-uq-e-slug').val() || '').trim();
             var title = String($('#mi-uq-e-title').val() || '').trim();
-            var meta = String($('#mi-uq-e-meta').val() || '');
-            var kw = String($('#mi-uq-e-keyword').val() || '').trim();
+            var md = $('#mi-uq-e-md').val();
+
+            var post_settings = {};
+            $('#mi-uq-post-settings :input').each(function() {
+                let name = $(this).attr('name');
+                post_settings[name] = $(this).is(':checked');
+            });
+
             if (!kw) {
                 return { ok: false, message: MIAdmin.i18n.keywordRequired };
             }
@@ -1497,9 +1515,11 @@
                     password: pwd,
                     meta_description: meta,
                     categories: ctg,
+                    tags: tags,
                     slug: slug,
                     title: title,
                     markdown: md,
+                    post_settings: post_settings,
                 },
             };
         }
@@ -1529,12 +1549,18 @@
                     }
                 });
             }
+            var tags = $('#mi-ua-e-tags').val().split(',').map(t => t.trim()).filter(t => t);
             var slug = String($('#mi-ua-e-slug').val() || '').trim();
             var title = String($('#mi-ua-e-title').val() || '').trim();
             if (!slug || !title) {
                 return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
             }
             var md = $('#mi-ua-e-md').val();
+            var post_settings = {};
+            $('#mi-ua-post-settings :input').each(function() {
+                let name = $(this).attr('name');
+                post_settings[name] = $(this).is(':checked');
+            });
             return {
                 ok: true,
                 payload: {
@@ -1546,9 +1572,11 @@
                     password: pwd,
                     meta_description: meta,
                     categories: ctg,
+                    tags: tags,
                     slug: slug,
                     title: title,
                     markdown: md,
+                    post_settings: post_settings,
                 },
             };
         }
