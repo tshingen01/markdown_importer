@@ -1266,7 +1266,7 @@
             $('#mi-uq-e-md').val(buildStructuredMd(it));
             $('#mi-uq-post-settings :input').each(function() {
                 let name = $(this).attr('name');
-                $(this).prop('checked', it.post_settings && it.post_settings[name]);
+                $(this).prop('checked', it.post_settings ? it.post_settings[name] : false);
             });
         }
         function fillUpgradeArticleEditorFromItem(a) {
@@ -1292,7 +1292,7 @@
             $('#mi-ua-e-md').val(buildStructuredMd(a));
             $('#mi-ua-post-settings :input').each(function() {
                 let name = $(this).attr('name');
-                $(this).prop('checked', a.post_settings && a.post_settings[name]);
+                $(this).prop('checked', a.post_settings ? a.post_settings[name] : false);
             });
         }
 
