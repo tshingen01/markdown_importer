@@ -28,7 +28,7 @@
     }
 
     function buildValidationCsv(rows) {
-        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","categories","categories_status","url_slug","url_slug_status","errors"'];
+        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","categories","categories_status","tags","tags_status","url_slug","url_slug_status","errors"'];
         (rows || []).forEach(function (row) {
             out.push(
                 [
@@ -41,6 +41,8 @@
                     csvEscape(row.visibility_status || ''),
                     csvEscape(row.categories || ''),
                     csvEscape(row.categories_status || ''),
+                    csvEscape(row.tags || ''),
+                    csvEscape(row.tags_status || ''),
                     csvEscape(row.slug || ''),
                     csvEscape(row.slug_status || ''),
                     csvEscape((row.errors || []).join(' | ')),
@@ -256,7 +258,7 @@
             $('#mi-q-e-save').toggle(!ro);
             $('#mi-del-m-btn').toggle(!ro);
             $(
-                '#mi-q-e-comment, #mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-password'
+                '#mi-q-e-comment, #mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-tags, #mi-q-e-md, #mi-q-e-password'
             )
                 .prop('readonly', ro)
                 .prop('disabled', false);
@@ -291,6 +293,8 @@
             }
             $('#mi-q-e-meta').val(it.meta_description || '');
             $('#mi-q-e-categories').val(it.categories || ['Uncategorized']).trigger('change');
+            var tags = it.tags || [];
+            $('#mi-q-e-tags').val(tags.join(', '));
             $('#mi-q-e-slug').val(it.slug || '');
             $('#mi-q-e-title').val(it.title || '');
             $('#mi-q-e-md').val(buildStructuredMd(it));
@@ -495,6 +499,16 @@
         function buildPayloadForImportQueueSave() {
             var md = $('#mi-q-e-md').val();
             var cmt = String($('#mi-q-e-comment').val() || '').trim();
+            var releaseVal = String($('#mi-q-e-release').val() || '').trim();
+            if (!releaseVal) {
+                releaseVal = 'now';
+            }
+            var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
+            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
+                vis = 'private';
+            }
+            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-q-e-password').val() || '') : '';
+            var meta = String($('#mi-q-e-meta').val() || '');
             var ctg = $('#mi-q-e-categories').val().length > 0 ? $('#mi-q-e-categories').val() : ['Uncategorized'];
             if( $('#mi-q-e-categories').val().length > 1) {
                 ctg = [];
@@ -504,18 +518,9 @@
                     }
                 });
             }
-            var vis = $('input[name="mi-q-e-vis"]:checked').val() || 'private';
-            if (vis !== 'publish' && vis !== 'private' && vis !== 'draft' && vis !== 'future') {
-                vis = 'private';
-            }
-            var pwd = vis === 'publish' || vis === 'future' ? String($('#mi-q-e-password').val() || '') : '';
-            var releaseVal = String($('#mi-q-e-release').val() || '').trim();
-            if (!releaseVal) {
-                releaseVal = 'now';
-            }
+            var tags = String($('#mi-q-e-tags').val() || '').split(',').map(t => t.trim()).filter(t => t);
             var slug = String($('#mi-q-e-slug').val() || '').trim();
             var title = String($('#mi-q-e-title').val() || '').trim();
-            var meta = String($('#mi-q-e-meta').val() || '');
             var kw = String($('#mi-q-e-keyword').val() || '').trim();
             if (!kw) {
                 return { ok: false, message: MIAdmin.i18n.keywordRequired };
@@ -534,15 +539,16 @@
                     id: currentQueueId,
                     keyword: kw,
                     comment: cmt,
-                    categories: ctg,
                     release_date: releaseVal,
                     visibility: vis,
                     password: pwd,
                     meta_description: meta,
+                    categories: ctg,
+                    tags: tags,
                     slug: slug,
                     title: title,
                     markdown: md,
-                    post_settings
+                    post_settings: post_settings
                 },
             };
         }

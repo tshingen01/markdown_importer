@@ -154,6 +154,8 @@ class MI_Article_Service {
         }
         self::attach_meta( $post_id, $parsed, $release );
 
+        wp_set_post_tags( $post_id, $parsed[ 'tags' ] ?? [] );
+        // create categories
         $term_ids = [];
         foreach( $parsed[ 'categories' ] as $cat_name) {
             $cat_name = trim( ( string ) $cat_name );

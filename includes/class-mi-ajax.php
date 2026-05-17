@@ -148,8 +148,10 @@ class MI_Ajax {
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
                     'visibility_status' => isset( $validation[ 'visibility_error' ] ) ? ( string ) $validation[ 'visibility_error' ] : '',
-                    'categories_raw' => isset( $validation['categories_raw'] ) ? ( string ) $validation['categories_raw'] : '',
+                    'categories' => isset( $validation['categories_raw'] ) ? ( string ) $validation['categories_raw'] : '',
                     'categories_error' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
+                    'tags' => isset( $validation['tags_raw'] ) ? ( string ) $validation['tags_raw'] : '',
+                    'tags_error' => isset( $validation['tags_error'] ) ? ( string ) $validation['tags_error'] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -187,12 +189,14 @@ class MI_Ajax {
                     'filename' => $name,
                     'keyword' => $keyword,
                     'keyword_status' => $keyword_status,
-                    'categories' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
-                    'categories_raw' => isset( $validation[ 'categories_raw' ] ) ? ( string ) $validation[ 'categories_raw' ] : '',     
                     'release_date' => isset( $validation[ 'release_raw' ] ) && ( string ) $validation[ 'release_raw' ] !== '' ? ( string ) $validation[ 'release_raw' ] : ( isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : '' ),
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
                     'visibility_status' => isset( $validation[ 'visibility_error' ] ) ? ( string ) $validation[ 'visibility_error' ] : '',
+                    'categories' => isset( $validation[ 'categories_raw' ] ) ? ( string ) $validation[ 'categories_raw' ] : '',     
+                    'categories_status' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
+                    'tags' => isset( $validation['tags_raw'] ) ? ( string ) $validation['tags_raw'] : '',
+                    'tags_status' => isset( $validation['tags_error'] ) ? ( string ) $validation['tags_error'] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : $slug,
                     'slug_status' => $slug_status,
                     'errors' => $errors,
@@ -202,6 +206,7 @@ class MI_Ajax {
 
             $rel = isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : 'now';
             $categories = isset( $validation[ 'categories' ] ) && is_array( $validation[ 'categories' ] ) ? array_values( array_map( 'strval', $validation[ 'categories' ] ) ) : [];
+            $tags = isset( $validation[ 'tags' ] ) && is_array( $validation[ 'tags' ] ) ? array_values( array_map( 'strval', $validation[ 'tags' ] ) ) : [];
             $visibility = isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : 'private';
             $password = isset( $validation[ 'password' ] ) ? ( string ) $validation[ 'password' ] : '';
             $valid_items[] = [
@@ -216,6 +221,7 @@ class MI_Ajax {
                 'password' => $password,
                 'meta_description' => $validation[ 'meta_description' ],
                 'categories' => $categories,
+                'tags' => $tags,
                 'slug' => $slug,
                 'title' => $validation[ 'title' ],
                 'markdown' => $validation[ 'markdown' ],
@@ -299,17 +305,18 @@ class MI_Ajax {
                     [
                         'item' => [
                             'id' => ( string ) $item[ 'id' ],
-                            'comment' => isset( $item[ 'comment' ] ) ? ( string ) $item[ 'comment' ] : '',
-                            'categories' => isset( $item[ 'categories' ] ) && is_array( $item[ 'categories' ] ) ? array_values( array_map( 'strval', $item[ 'categories' ] ) ) : [],
                             'filename' => isset( $item[ 'filename' ] ) ? ( string ) $item[ 'filename' ] : '',
                             'keyword' => isset( $item[ 'keyword' ] ) ? ( string ) $item[ 'keyword' ] : '',
-                            'slug' => isset( $item[ 'slug' ] ) ? ( string ) $item[ 'slug' ] : '',
-                            'title' => isset( $item[ 'title' ] ) ? ( string ) $item[ 'title' ] : '',
-                            'meta_description' => isset( $item[ 'meta_description' ] ) ? ( string ) $item[ 'meta_description' ] : '',
-                            'markdown' => isset( $item[ 'markdown' ] ) ? ( string ) $item[ 'markdown' ] : '',
+                            'comment' => isset( $item[ 'comment' ] ) ? ( string ) $item[ 'comment' ] : '',
                             'release_date' => MI_Staging::release_for_form( $rel ),
                             'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : 'private',
                             'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
+                            'meta_description' => isset( $item[ 'meta_description' ] ) ? ( string ) $item[ 'meta_description' ] : '',
+                            'categories' => isset( $item[ 'categories' ] ) && is_array( $item[ 'categories' ] ) ? array_values( array_map( 'strval', $item[ 'categories' ] ) ) : [],
+                            'tags' => isset( $item[ 'tags' ] ) && is_array( $item[ 'tags' ] ) ? array_values( array_map( 'strval', $item[ 'tags' ] ) ) : [],
+                            'slug' => isset( $item[ 'slug' ] ) ? ( string ) $item[ 'slug' ] : '',
+                            'title' => isset( $item[ 'title' ] ) ? ( string ) $item[ 'title' ] : '',
+                            'markdown' => isset( $item[ 'markdown' ] ) ? ( string ) $item[ 'markdown' ] : '',
                             'post_settings' => isset( $item[ 'post_settings'] ) ? ( array ) $item['post_settings'] : [],
                             'error' => isset( $item[ 'error' ] ) ? ( string ) $item[ 'error' ] : '',
                         ],
@@ -328,10 +335,11 @@ class MI_Ajax {
         $id = isset( $_POST[ 'id' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'id' ] ) ) : '';
         $keyword = isset( $_POST[ 'keyword' ] ) ? trim( wp_unslash( $_POST[ 'keyword' ] ) ) : '';
         $cmt = isset( $_POST[ 'comment' ] ) ? wp_unslash( $_POST[ 'comment' ] ) : '';
-        $ctg = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
         $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
         $slug_in = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
+        $ctg = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
+        $tags = isset( $_POST[ 'tags' ] ) && is_array( $_POST[ 'tags' ] ) ? array_map( function( $t ) { return trim( wp_unslash( $t ) ); }, $_POST[ 'tags' ] ) : [];
         $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $release = isset( $_POST[ 'release_date' ] ) ? wp_unslash( $_POST[ 'release_date' ] ) : 'now';
         $vis = isset( $_POST[ 'visibility' ] ) ? sanitize_key( wp_unslash( $_POST[ 'visibility' ] ) ) : 'private';
@@ -364,7 +372,7 @@ class MI_Ajax {
             wp_send_json_error( [ 'message' => __( 'Queue item not found.', 'markdown-importer' ) ] );
         }
 
-        $composed = MI_Parser::compose_document($cmt, $release, $vis, $pwd, $meta, $ctg, $slug_in, $title, $md );
+        $composed = MI_Parser::compose_document($cmt, $release, $vis, $pwd, $meta, $ctg, $tags, $slug_in, $title, $md );
         $validation = MI_Parser::validate_document( $composed );
         if ( ! $validation[ 'ok' ] ) {
             $msg = isset( $validation[ 'errors' ][ 0 ] ) ? ( string ) $validation[ 'errors' ][ 0 ] : __( 'Invalid markdown structure.', 'markdown-importer' );
@@ -418,6 +426,7 @@ class MI_Ajax {
         $queue[ $idx ][ 'meta_description' ] = isset( $validation[ 'meta_description' ] ) ? ( string ) $validation[ 'meta_description' ] : '';
         $queue[ $idx ][ 'markdown' ] = isset( $validation[ 'markdown' ] ) ? ( string ) $validation[ 'markdown' ] : '';
         $queue[ $idx ][ 'categories' ] = array_values( array_map( 'strval', $validation[ 'categories' ] ) );
+        $queue[ $idx ][ 'tags' ] = array_values( array_map( 'strval', $validation[ 'tags' ] ) );
         $queue[ $idx ][ 'slug' ] = $slug_s;
         $queue[ $idx ][ 'title' ] = isset( $validation[ 'title' ] ) ? ( string ) $validation[ 'title' ] : '';
         $queue[ $idx ][ 'post_settings'] = $post_settings;
@@ -522,6 +531,7 @@ class MI_Ajax {
                 'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
                 'meta_description' => $item[ 'meta_description' ],
                 'categories' => $item[ 'categories' ],
+                'tags' => $item[ 'tags' ],
                 'slug' => $item[ 'slug' ],
                 'title' => $item[ 'title' ],
                 'markdown' => $item[ 'markdown' ],
@@ -851,6 +861,10 @@ class MI_Ajax {
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
                     'visibility_status' => isset( $validation[ 'visibility_error' ] ) ? ( string ) $validation[ 'visibility_error' ] : '',
+                    'categories_raw' => isset( $validation[ 'categories_raw' ] ) ? array_values( array_map( 'strval', ( array ) $validation[ 'categories_raw' ] ) ) : [],
+                    'categories_error' => isset( $validation[ 'categories_error' ] ) ? ( string ) $validation[ 'categories_error' ] : '',
+                    'tags_raw' => isset( $validation[ 'tags_raw' ] ) ? ( string ) $validation[ 'tags_raw' ] : '',
+                    'tags_error' => isset( $validation[ 'tags_error' ] ) ? ( string ) $validation[ 'tags_error' ] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -885,6 +899,7 @@ class MI_Ajax {
                 'password' => isset( $validation[ 'password' ] ) ? ( string ) $validation[ 'password' ] : '',
                 'meta_description' => $validation[ 'meta_description' ],
                 'categories' => array_values( array_map( 'strval', $validation[ 'categories' ] ) ),
+                'tags' => array_values( array_map( 'strval', $validation[ 'tags' ] ) ),
                 'slug' => $validation[ 'slug' ],
                 'title' => $validation[ 'title' ],
                 'markdown' => $validation[ 'markdown' ],
@@ -1011,7 +1026,6 @@ class MI_Ajax {
         }
         self::write_upgrade_queue( $uid, $queue );
         wp_send_json_success( [ 'queue' => self::decorate_upgrade_queue( $queue ) ] );
-        var_dump( $queue );
         die();
     }
 

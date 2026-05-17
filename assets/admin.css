@@ -924,7 +924,13 @@
     color: #6e1415 !important;
     box-shadow: 0 0 0 1px #b32d2e;
 }
-
+.mi-tags {
+    line-height: 20px;
+    min-height: 20px;
+    max-height: 100px; /* 20px × 5 rows */
+    overflow-y: auto;
+    resize: none;
+}
 
 @media screen and (max-width: 960px) {
     .mi-editor-grid,
