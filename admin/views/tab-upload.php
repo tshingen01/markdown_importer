@@ -114,7 +114,28 @@ Intro text...
                             $variant = 'queue';
                             require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
                             ?>
+                            <div class="mi-checkboxes" id="mi-q-post-settings">
+                                <label class="mi-check-container">
+                                    <input type="checkbox" name="mi-make-this-post-sticky">
+                                    <span class="mi-checkmark"></span>
+                                    Make this post sticky
+                                </label>
+
+                                <label class="mi-check-container">
+                                    <input type="checkbox" name="mi-allow-comments">
+                                    <span class="mi-checkmark"></span>
+                                    Allow Comments
+                                </label>
+
+                                <label class="mi-check-container">
+                                    <input type="checkbox" name="mi-allow-pings">
+                                    <span class="mi-checkmark"></span>
+                                    Allow Pings
+                                </label>
+
+                            </div>
                             <div class="mi-side-actions">
+                                <button type="button" class="button mi-q-remove" id="mi-del-m-btn"><?php esc_html_e('Delete', 'markdown-importer'); ?></button> 
                                 <button type="button" class="button button-primary" id="mi-q-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
                                 <button type="button" class="button" id="mi-q-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>
                             </div>

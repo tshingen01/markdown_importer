@@ -832,7 +832,7 @@
     width: 840px;
     max-width: 90%;
     margin: 24px auto;
-    padding: 20px;
+    padding: 2px 16px 16px 16px;;
     border-radius: 8px;
     position: relative;
 }
@@ -847,6 +847,82 @@
 
 .mi-modal-open {
     display: block !important;
+}
+
+.mi-checkboxes {
+    border: 1px solid #d9e1ea;
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 350px;
+    font-family: Arial, sans-serif;
+}
+
+.mi-check-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.mi-check-container:hover {
+    color: #16619B;
+}
+
+.mi-check-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.mi-checkmark {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    margin-right: 8px;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.mi-checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.mi-check-container input:checked ~ .mi-checkmark:after {
+    display: block;
+}
+
+.mi-check-container .mi-checkmark:after {
+    left: 6px;
+    top: 3px;
+    width: 2px;
+    height: 7px;
+    border: solid #16619B;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+}
+
+#mi-del-m-btn {
+    align-items: center;
+    border-color: #e8c6c9 !important;
+    background: #fcf0f1 !important;
+    color: #8e1e21 !important;
+}
+
+#mi-del-m-btn:hover {
+    border-color: #b32d2e ;
+    background: #ffeef0 !important;
+    color: #6e1415 !important;
+    box-shadow: 0 0 0 1px #b32d2e;
 }
 
 

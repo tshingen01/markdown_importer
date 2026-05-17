@@ -115,6 +115,16 @@ class MI_Article_Service {
         if ( $status !== 'publish' && $status !== 'future' ) {
             $password = '';
         }
+
+        $allow_comments = false;
+        $allow_pings = false;
+        $make_this_post_sticky = false;
+
+        if($parsed['post_settings']) {
+            $allow_comments = $parsed['post_settings']['mi-allow-comments'] && $parsed['post_settings']['mi-allow-comments'] == 'true';
+            $allow_pings = $parsed['post_settings']['mi-allow-pings'] && $parsed['post_settings']['mi-allow-pings'] == 'true';
+            $make_this_post_sticky = $parsed['post_settings']['mi-make-this-post-sticky'] && $parsed['post_settings']['mi-make-this-post-sticky'] == 'true';
+        }
         $post_id = wp_insert_post(
             [
                 'post_type' => MI_Post_Type::POST_TYPE,
@@ -126,9 +136,18 @@ class MI_Article_Service {
                 'post_date' => $post_date,
                 'post_date_gmt' => get_gmt_from_date( $post_date ),
                 'post_password' => $password,
+                'comment_status' => $allow_comments? 'open' : 'closed',
+                'ping_status' => $allow_pings? 'open' : 'closed'
             ],
             true
         );
+
+        if($make_this_post_sticky) {
+            stick_post( $post_id );
+        }
+        else {
+            unstick_post( $post_id );
+        }
 
         if ( is_wp_error( $post_id ) ) {
             return $post_id;
@@ -156,8 +175,8 @@ class MI_Article_Service {
             $term_ids,
             'category',
         );
+
         return $post_id;
-        
     }
 
     /**
@@ -440,6 +459,7 @@ class MI_Article_Service {
             delete_post_meta( $post_id, self::META_PENDING_UPGRADE );
             delete_post_meta( $post_id, '_mi_meta_description' );
             wp_delete_post( $post_id, true );
+            unstick_post( $post_id );
         }
 
         public static function get_article_payload( $post_id ) {
@@ -447,35 +467,43 @@ class MI_Article_Service {
             if ( ! $post || $post->post_type !== MI_Post_Type::POST_TYPE ) {
                 return null;
             }
-            $cmt = ( string ) get_post_meta( $post_id, self::META_COMMENT, true );
-            $cates = ( array ) get_the_category( $post_id );
+            $is_sticky = 
+            $post_settings = array(
+                'mi-make-this-post-sticky' => is_sticky( $post_id ),
+                'mi-allow-comments' => $post->comment_status == 'open',
+                'mi-allow-pings' => $post->ping_status == 'open'
+            );
             $kw = ( string ) get_post_meta( $post_id, self::META_KEYWORD, true );
-            $md = ( string ) get_post_meta( $post_id, self::META_MARKDOWN, true );
+            $cmt = ( string ) get_post_meta( $post_id, self::META_COMMENT, true );
             $rel = ( string ) get_post_meta( $post_id, self::META_RELEASE, true );
             $meta = ( string ) get_post_meta( $post_id, '_mi_meta_description', true );
+            $cates = ( array ) get_the_category( $post_id );
+            $md = ( string ) get_post_meta( $post_id, self::META_MARKDOWN, true );
             if ( $meta === '' ) {
                 $meta = $post->post_excerpt;
             }
 
             return [
-                'comment' => $cmt,
-                'categories' => array_map( function ( $c ) { return $c->name; }, $cates ), 
                 'id' => ( int ) $post_id,
                 'keyword' => $kw,
-                'slug' => $post->post_name,
-                'title' => $post->post_title,
-                'meta_description' => $meta,
-                'markdown' => $md,
+                'comment' => $cmt,
+                'permalink' => get_permalink( $post_id ),
                 'release_date' => MI_Staging::release_for_form( $rel !== '' ? $rel : 'now' ),
                 'visibility' => in_array( $post->post_status, [ 'publish', 'private', 'draft', 'future' ], true ) ? $post->post_status : 'private',
                 'password' => ( string ) $post->post_password,
+                'meta_description' => $meta,
+                'categories' => array_map( function ( $c ) { return $c->name; }, $cates ), 
+                'slug' => $post->post_name,
+                'title' => $post->post_title,
+                'markdown' => $md,
+                'post_settings' => $post_settings
             ];
         }
 
         /**
         * @return true|WP_Error
         */
-        public static function save_article_from_request( $post_id, $keyword,$comment, $release_date, $visibility, $password = '', $meta_description, $categories, $slug, $title, $markdown ) {
+        public static function save_article_from_request( $post_id, $keyword,$comment, $release_date, $visibility, $password = '', $meta_description, $categories, $slug, $title, $markdown, $post_settings ) {
             $slug = sanitize_title( $slug );
             $uniq = self::validate_article_uniqueness( ( int ) $post_id, $keyword, $slug );
             if ( is_wp_error( $uniq ) ) {
@@ -491,7 +519,8 @@ class MI_Article_Service {
             if ( $status !== 'publish' && $status !== 'future' ) {
                 $password = '';
             }
-
+            $comment_status = $post_settings['mi-allow-comments'] == 'true' ? 'open' : 'closed';
+            $ping_status = $post_settings['mi-allow-pings'] =='true' ? 'open' : 'closed';
             wp_update_post(
                 [
                     'ID' => $post_id,
@@ -502,8 +531,16 @@ class MI_Article_Service {
                     'post_password' => $password,
                     'post_date' => $post_date,
                     'post_date_gmt' => get_gmt_from_date( $post_date ),
+                    'comment_status' => $comment_status,
+                    'ping_status' => $ping_status
                 ]
             );
+
+            if($post_settings['mi-make-this-post-sticky'] == 'true'){
+                stick_post( $post_id ); 
+            }else {
+                unstick_post( $post_id );
+            }
 
             $term_ids = [];
 

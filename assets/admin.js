@@ -28,7 +28,7 @@
     }
 
     function buildValidationCsv(rows) {
-        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","url_slug","url_slug_status","errors"'];
+        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","categories","categories_status","url_slug","url_slug_status","errors"'];
         (rows || []).forEach(function (row) {
             out.push(
                 [
@@ -39,6 +39,8 @@
                     csvEscape(row.release_status || ''),
                     csvEscape(row.visibility || ''),
                     csvEscape(row.visibility_status || ''),
+                    csvEscape(row.categories || ''),
+                    csvEscape(row.categories_status || ''),
                     csvEscape(row.slug || ''),
                     csvEscape(row.slug_status || ''),
                     csvEscape((row.errors || []).join(' | ')),
@@ -252,11 +254,13 @@
             var ro = !!viewOnly;
             $queueEditor.toggleClass('mi-queue-view-mode', ro);
             $('#mi-q-e-save').toggle(!ro);
+            $('#mi-del-m-btn').toggle(!ro);
             $(
                 '#mi-q-e-comment, #mi-q-e-title, #mi-q-e-keyword, #mi-q-e-slug, #mi-q-e-meta, #mi-q-e-md, #mi-q-e-password'
             )
                 .prop('readonly', ro)
                 .prop('disabled', false);
+            $('#mi-q-post-settings :input').prop('disabled', ro);
             $('#mi-q-e-categories').prop('disabled', ro);
             $('input[name="mi-q-e-vis"]').prop('disabled', ro);
             $queueEditor.find('.mi-wp-schedule').attr('data-readonly', ro ? '1' : '');
@@ -290,6 +294,16 @@
             $('#mi-q-e-slug').val(it.slug || '');
             $('#mi-q-e-title').val(it.title || '');
             $('#mi-q-e-md').val(buildStructuredMd(it));
+            $('#mi-del-m-btn').data('id', it.id);
+
+            $('#mi-q-post-settings :input').each(function() {
+                let name = $(this).attr('name');
+                if(it['post_settings']) {
+                    $(this).prop('checked', it['post_settings'][name] == 'true');
+                }else {
+                    $(this).prop('checked', false);
+                }
+            });
         }
 
         function renderQueue(rows) {
@@ -431,9 +445,10 @@
                 }
             });
         });
-        $tbody.on('click', '.mi-q-remove', function () {
+        $(document).on('click', '.mi-q-remove', function () {
             var $tr = $(this).closest('tr');
             var rid = $tr.data('id');
+            if(!rid) { rid = $(this).data('id'); currentQueueId = null; $editorModal.removeClass('mi-modal-open'); }
             if (currentQueueId && String(currentQueueId) === String(rid)) {
                 currentQueueId = null;
                 $queueEditor.addClass('mi-hidden');
@@ -508,6 +523,11 @@
             if (!slug || !title) {
                 return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
             }
+            var post_settings = {};
+            $('#mi-q-post-settings :input').each(function(){
+              let name = $(this).attr('name');
+              post_settings[name] = $(this).is(':checked');
+            });
             return {
                 ok: true,
                 payload: {
@@ -522,6 +542,7 @@
                     slug: slug,
                     title: title,
                     markdown: md,
+                    post_settings
                 },
             };
         }
@@ -777,6 +798,11 @@
                 return { ok: false, message: MIAdmin.i18n.slugTitleRequired };
             }
             var md = $('#mi-e-md').val();
+            var post_settings = {};
+            $('#mi-a-post-settings :input').each(function() {
+                let name = $(this).attr('name');
+                post_settings[name] = $(this).is(':checked');
+            });
             return {
                 ok: true,
                 payload: {
@@ -791,6 +817,7 @@
                     slug: slug,
                     title: title,
                     markdown: md,
+                    post_settings
                 },
             };
         }
@@ -815,6 +842,12 @@
             $('#mi-e-slug').val(a.slug || '');
             $('#mi-e-title').val(a.title || '');
             $('#mi-e-md').val(buildStructuredMd(a));
+            $('#mi-a-post-settings :input').each(function() {
+                var name = $(this).attr('name');
+                $(this).prop('checked', a.post_settings[name]);
+            });
+            $('#mi-e-preview-link').prop('href', a.permalink);
+            $('#mi-del-m-btn').data('id', a.id);
         }
 
         $tbody.on('click', '.mi-a-edit', function () {
@@ -839,11 +872,16 @@
             });
         });
 
-        $tbody.on('click', '.mi-a-del', function () {
+        $(document).on('click', '.mi-a-del', function () {
             if (!window.confirm(MIAdmin.i18n.confirmDelete)) {
                 return;
             }
             var id = $(this).closest('tr').data('id');
+            if(!id) {
+                id = $(this).data('id'); 
+                currentId = null;
+                $articleModal.removeClass('mi-modal-open');
+            }
             ajax('mi_delete_article', { id: id }).done(function (res) {
                 if (res.success) {
                     if (currentId === id) {
@@ -897,12 +935,19 @@
         });
 
         $('#mi-a-modal-close').on('click', function () {
+            currentId = null;
+            $articleModal.removeClass('mi-modal-open');
+        });
+
+        $('#mi-a-e-close').on('click', function () {
+            currentId = null;
             $articleModal.removeClass('mi-modal-open');
         });
        
         $('#mi-articles-search-btn').on('click', function () {
             loadList($('#mi-articles-search').val());
         });
+
         $('#mi-articles-search').on('change', function() {
             loadList($(this).val());
         });
@@ -1623,7 +1668,7 @@
 
 
         $queueEditor.on('change', 'input[name="mi-uq-e-vis"]', function () {
-            syncQueuePasswordField();
+            syncUpgradeQueuePasswordField();
         });
 
         $articleEditor.on('change', 'input[name="mi-ua-e-vis"]', function () {
@@ -1685,12 +1730,12 @@
         });
 
         $('#mi-ua-e-modal-close').on('click', function() {
-            currentQueueId = null;
+            currentId = null;
             $articleModal.removeClass('mi-modal-open');
         });
 
         $('#mi-ua-e-close').on('click', function () {
-            currentQueueId = null;
+            currentId = null;
             $articleModal.removeClass('mi-modal-open');
         });
 

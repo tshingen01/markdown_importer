@@ -148,7 +148,8 @@ class MI_Ajax {
                     'release_status' => isset( $validation[ 'release_error' ] ) ? ( string ) $validation[ 'release_error' ] : '',
                     'visibility' => isset( $validation[ 'visibility' ] ) ? ( string ) $validation[ 'visibility' ] : '',
                     'visibility_status' => isset( $validation[ 'visibility_error' ] ) ? ( string ) $validation[ 'visibility_error' ] : '',
-                    'categories' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
+                    'categories_raw' => isset( $validation['categories_raw'] ) ? ( string ) $validation['categories_raw'] : '',
+                    'categories_error' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -309,6 +310,7 @@ class MI_Ajax {
                             'release_date' => MI_Staging::release_for_form( $rel ),
                             'visibility' => isset( $item[ 'visibility' ] ) ? ( string ) $item[ 'visibility' ] : 'private',
                             'password' => isset( $item[ 'password' ] ) ? ( string ) $item[ 'password' ] : '',
+                            'post_settings' => isset( $item[ 'post_settings'] ) ? ( array ) $item['post_settings'] : [],
                             'error' => isset( $item[ 'error' ] ) ? ( string ) $item[ 'error' ] : '',
                         ],
                         'categories_all' => $categories,
@@ -347,7 +349,7 @@ class MI_Ajax {
         if ( $keyword === '' ) {
             wp_send_json_error( [ 'message' => __( 'Keyword cannot be empty.', 'markdown-importer' ) ] );
         }
-
+        $post_settings = isset( $_POST[ 'post_settings' ] ) ? $_POST[ 'post_settings' ] : [];
         $queue = MI_Staging::get_queue( $uid );
         $idx = null;
         $item = null;
@@ -418,6 +420,7 @@ class MI_Ajax {
         $queue[ $idx ][ 'categories' ] = array_values( array_map( 'strval', $validation[ 'categories' ] ) );
         $queue[ $idx ][ 'slug' ] = $slug_s;
         $queue[ $idx ][ 'title' ] = isset( $validation[ 'title' ] ) ? ( string ) $validation[ 'title' ] : '';
+        $queue[ $idx ][ 'post_settings'] = $post_settings;
         $queue[ $idx ][ 'error' ] = '';
 
         if ( ! empty( $queue[ $idx ][ 'files_dir' ] ) && ! empty( $queue[ $idx ][ 'filename' ] ) && is_dir( ( string ) $queue[ $idx ][ 'files_dir' ] ) ) {
@@ -522,6 +525,7 @@ class MI_Ajax {
                 'slug' => $item[ 'slug' ],
                 'title' => $item[ 'title' ],
                 'markdown' => $item[ 'markdown' ],
+                'post_settings' => $item[ 'post_settings' ]
             ];
             $post_id = MI_Article_Service::create_article( $parsed, $item[ 'release_date' ] );
             if ( is_wp_error( $post_id ) ) {
@@ -702,8 +706,8 @@ class MI_Ajax {
         $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
         $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
-
-        $saved = MI_Article_Service::save_article_from_request( $id, $keyword, $cmt, $release, $vis, $pwd, $meta, $ctg, $slug, $title, $md );
+        $post_settings = isset($_POST[ 'post_settings' ]) ? $_POST['post_settings'] : [];
+        $saved = MI_Article_Service::save_article_from_request( $id, $keyword, $cmt, $release, $vis, $pwd, $meta, $ctg, $slug, $title, $md, $post_settings);
         if ( is_wp_error( $saved ) ) {
             wp_send_json_error( [ 'message' => $saved->get_error_message() ] );
         }

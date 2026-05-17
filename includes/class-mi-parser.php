@@ -70,10 +70,10 @@ class MI_Parser {
             $categories_line = trim( isset( $lines[ 4 ] ) ? ( string ) $lines[ 4 ] : '' );
             $categories = self::parse_categories_line( $categories_line );
             if ( ! $categories[ 'valid' ] ) {
+                $categories_raw = $categories[ 'raw' ];
                 $categories_error = __( 'Invalid syntax.', 'markdown-importer' );
                 $errors[] = __( 'Line 5 (categories) must be [[Category1::Category2::...]] , [[]], and [["Uncategorized"]]', 'markdown-importer' ) . ' ' . $categories_error;
             } else {
-                $categories_raw = $categories[ 'raw' ];
                 $categories_normalized = $categories[ 'normalized' ];
             }
 
@@ -113,6 +113,7 @@ class MI_Parser {
                 'password' => $visibility_password,
                 'meta_description' => $meta_description,
                 'categories_raw' => $categories_raw,
+                'categories_error' => $categories_error,
                 'categories' => $categories_normalized,
                 'slug_error' => $slug_error,
                 'slug_raw' => $slug_line,

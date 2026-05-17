@@ -30,6 +30,10 @@ if (! defined('ABSPATH')) {
             <span class="mi-modal-close" id="mi-a-modal-close">&times;</span>
             <h3><?php esc_html_e('Edit article', 'markdown-importer'); ?></h3>
             <div id="mi-article-editor" class="mi-article-editor">
+                <a href="" class="mi-preview-link" id="mi-e-preview-link" target="_blank" rel="noopener noreferrer" >
+                    <?php esc_html_e('Preview','markdown-importer'); ?>
+                    <span class="dashicons dashicons-external"></span>
+                </a>
                 <div class="mi-editor-grid">
                     <div class="mi-editor-main">
                         <label class="mi-label"><?php esc_html_e('Comment', 'markdown-importer'); ?></label>
@@ -68,8 +72,30 @@ if (! defined('ABSPATH')) {
                         $variant = 'article';
                         require MI_PLUGIN_DIR . 'admin/views/partials/release-scheduler.php';
                         ?>
+                        <div class="mi-checkboxes" id="mi-a-post-settings">
+                            <label class="mi-check-container">
+                                <input type="checkbox" name="mi-make-this-post-sticky">
+                                <span class="mi-checkmark"></span>
+                                Make this post sticky
+                            </label>
+
+                            <label class="mi-check-container">
+                                <input type="checkbox" name="mi-allow-comments">
+                                <span class="mi-checkmark"></span>
+                                Allow Comments
+                            </label>
+
+                            <label class="mi-check-container">
+                                <input type="checkbox" name="mi-allow-pings">
+                                <span class="mi-checkmark"></span>
+                                Allow Pings
+                            </label>
+
+                        </div>
                         <div class="mi-side-actions">
+                            <button type="button" class="button mi-a-del" id="mi-del-m-btn"><?php esc_html_e('Delete', 'markdown-importer'); ?></button> 
                             <button type="button" class="button button-primary" id="mi-e-save"><?php esc_html_e('SAVE CHANGES', 'markdown-importer'); ?></button>
+                            <button type="button" class="button" id="mi-a-e-close"><?php esc_html_e('Close', 'markdown-importer'); ?></button>
                         </div>
                     </div>
                 </div>
