@@ -798,6 +798,7 @@
                     }
                 });
             }
+            var tags = $('#mi-e-tags').val().split(',').map(t => t.trim()).filter(t => t);
             var slug = String($('#mi-e-slug').val() || '').trim();
             var title = String($('#mi-e-title').val() || '').trim();
             if (!slug || !title) {
@@ -820,10 +821,11 @@
                     password: pwd,
                     meta_description: meta,
                     categories: ctg,
+                    tags: tags,
                     slug: slug,
                     title: title,
                     markdown: md,
-                    post_settings
+                    post_settings: post_settings
                 },
             };
         }
@@ -845,6 +847,7 @@
             syncPasswordField();
             $('#mi-e-meta').val(a.meta_description || '');
             $('#mi-e-categories').val(a.categories || ['Uncategorized']).trigger('change');
+            $('#mi-e-tags').val((a.tags || []).join(', '));
             $('#mi-e-slug').val(a.slug || '');
             $('#mi-e-title').val(a.title || '');
             $('#mi-e-md').val(buildStructuredMd(a));

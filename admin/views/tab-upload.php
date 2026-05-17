@@ -98,7 +98,7 @@ Intro text...
                             <textarea class="widefat" rows="2" id="mi-q-e-meta"></textarea>
                             
                             <label class="mi-label"><?php esc_html_e('Tags', 'markdown-importer'); ?></label>
-                            <textarea class="widefat mi-tags" id="mi-q-e-tags" placeholder="Separate tags with commas"></textarea>
+                            <input type="text" class="widefat mi-tags" id="mi-q-e-tags" placeholder="<?php esc_attr_e('Separate tags with commas', 'markdown-importer'); ?>" />
 
                             <label class="mi-label"><?php esc_html_e('File Content', 'markdown-importer'); ?></label>
                             <textarea class="widefat mi-code" rows="16" id="mi-q-e-md"></textarea>

@@ -151,7 +151,7 @@ class MI_Parser {
         $line8 = trim( ( string ) $title );
         $body = ltrim( ( string ) $markdown_body, "\n" );
 
-        return $line1 . "\n" . $line2 . "\n" . $line3 . "\n" . $line4 . "\n" . $line5 . "\n" . $line6 . "\n" . $line7 . "\n" . $body;
+        return $line1 . "\n" . $line2 . "\n" . $line3 . "\n" . $line4 . "\n" . $line5 . "\n" . $line6 . "\n" . $line7 . "\n" . $line8  . "\n" . $body;
     }
 
     /**

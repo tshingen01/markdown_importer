@@ -55,8 +55,12 @@ if (! defined('ABSPATH')) {
                         <label class="mi-label"><?php esc_html_e('Meta description', 'markdown-importer'); ?></label>
                         <textarea class="widefat" rows="2" id="mi-e-meta"></textarea>
         
+                        <label class="mi-label"><?php esc_html_e('Tags', 'markdown-importer'); ?></label>
+                        <input type="text" class="widefat mi-tags" id="mi-e-tags" placeholder="<?php esc_attr_e('Comma-separated tags', 'markdown-importer'); ?>" />
+
                         <label class="mi-label"><?php esc_html_e('Article Content', 'markdown-importer'); ?></label>
                         <textarea class="widefat mi-code" rows="16" id="mi-e-md"></textarea>
+
                     </div>
                     <div class="mi-editor-side">
                         <div class="mi-side-box">
@@ -90,7 +94,6 @@ if (! defined('ABSPATH')) {
                                 <span class="mi-checkmark"></span>
                                 Allow Pings
                             </label>
-
                         </div>
                         <div class="mi-side-actions">
                             <button type="button" class="button mi-a-del" id="mi-del-m-btn"><?php esc_html_e('Delete', 'markdown-importer'); ?></button> 

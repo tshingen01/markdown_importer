@@ -713,11 +713,12 @@ class MI_Ajax {
         $pwd = isset( $_POST[ 'password' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'password' ] ) ) : '';
         $meta = isset( $_POST[ 'meta_description' ] ) ? wp_unslash( $_POST[ 'meta_description' ] ) : '';
         $ctg = isset( $_POST[ 'categories' ] ) && is_array( $_POST[ 'categories' ] ) ? array_map( function( $c ) { return trim( wp_unslash( $c ) ); }, $_POST[ 'categories' ] ) : [];
+        $tags = isset( $_POST[ 'tags' ] ) && is_array( $_POST[ 'tags' ] ) ? array_map( function( $t ) { return trim( wp_unslash( $t ) ); }, $_POST[ 'tags' ] ) : [];
         $slug = isset( $_POST[ 'slug' ] ) ? wp_unslash( $_POST[ 'slug' ] ) : '';
         $title = isset( $_POST[ 'title' ] ) ? wp_unslash( $_POST[ 'title' ] ) : '';
         $md = isset( $_POST[ 'markdown' ] ) ? wp_unslash( $_POST[ 'markdown' ] ) : '';
         $post_settings = isset($_POST[ 'post_settings' ]) ? $_POST['post_settings'] : [];
-        $saved = MI_Article_Service::save_article_from_request( $id, $keyword, $cmt, $release, $vis, $pwd, $meta, $ctg, $slug, $title, $md, $post_settings);
+        $saved = MI_Article_Service::save_article_from_request( $id, $keyword, $cmt, $release, $vis, $pwd, $meta, $ctg, $tags, $slug, $title, $md, $post_settings);
         if ( is_wp_error( $saved ) ) {
             wp_send_json_error( [ 'message' => $saved->get_error_message() ] );
         }

@@ -480,6 +480,7 @@ class MI_Article_Service {
             $rel = ( string ) get_post_meta( $post_id, self::META_RELEASE, true );
             $meta = ( string ) get_post_meta( $post_id, '_mi_meta_description', true );
             $cates = ( array ) get_the_category( $post_id );
+            $tags = (array) get_the_tags( $post_id );
             $md = ( string ) get_post_meta( $post_id, self::META_MARKDOWN, true );
             if ( $meta === '' ) {
                 $meta = $post->post_excerpt;
@@ -495,6 +496,7 @@ class MI_Article_Service {
                 'password' => ( string ) $post->post_password,
                 'meta_description' => $meta,
                 'categories' => array_map( function ( $c ) { return $c->name; }, $cates ), 
+                'tags' => array_map( function ( $t ) { return $t->name; }, $tags ),
                 'slug' => $post->post_name,
                 'title' => $post->post_title,
                 'markdown' => $md,
@@ -505,7 +507,7 @@ class MI_Article_Service {
         /**
         * @return true|WP_Error
         */
-        public static function save_article_from_request( $post_id, $keyword,$comment, $release_date, $visibility, $password = '', $meta_description, $categories, $slug, $title, $markdown, $post_settings ) {
+        public static function save_article_from_request( $post_id, $keyword,$comment, $release_date, $visibility, $password = '', $meta_description, $categories, $tags =[], $slug, $title, $markdown, $post_settings ) {
             $slug = sanitize_title( $slug );
             $uniq = self::validate_article_uniqueness( ( int ) $post_id, $keyword, $slug );
             if ( is_wp_error( $uniq ) ) {
@@ -543,6 +545,8 @@ class MI_Article_Service {
             }else {
                 unstick_post( $post_id );
             }
+
+            wp_set_post_tags( $post_id, $tags );
 
             $term_ids = [];
 
