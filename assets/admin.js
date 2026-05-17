@@ -1273,6 +1273,7 @@
             if (!a) {
                 return;
             }
+            $('#mi-ua-e-preview-link').prop('href', a.permalink);
             $('#mi-ua-e-keyword').val(a.keyword || '');
             $('#mi-ua-e-comment').val(a.comment || '');
             $('#mi-ua-e-release').val(a.release_date || 'now');
