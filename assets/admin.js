@@ -303,11 +303,8 @@
 
             $('#mi-q-post-settings :input').each(function() {
                 let name = $(this).attr('name');
-                if(it['post_settings'] && it['post_settings'][name]) {
-                    $(this).prop('checked', it['post_settings'][name] == 'true');
-                }else {
-                    $(this).prop('checked', false);
-                }
+                $(this).prop('checked', it.post_settings ? it.post_settings[name] : false);
+
             });
         }
 

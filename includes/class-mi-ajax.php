@@ -361,7 +361,7 @@ class MI_Ajax {
         if ( $keyword === '' ) {
             wp_send_json_error( [ 'message' => __( 'Keyword cannot be empty.', 'markdown-importer' ) ] );
         }
-        $post_settings = isset( $_POST[ 'post_settings' ] ) ? $_POST[ 'post_settings' ] : [];
+        $post_settings = isset( $_POST[ 'post_settings' ] ) && is_array( $_POST[ 'post_settings' ] ) ? array_map( function( $ps ) { return $ps == "true"; }, $_POST[ 'post_settings' ] ) : [];
         $queue = MI_Staging::get_queue( $uid );
         $idx = null;
         $item = null;
