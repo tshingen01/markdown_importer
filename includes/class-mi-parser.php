@@ -30,10 +30,10 @@ class MI_Parser {
         $content = str_replace( [ "\r\n", "\r" ], "\n", ( string ) $content );
         $lines = explode( "\n", $content );
         $errors = [];
-        /* Compact header: line 1 comment, 2 release, 3 visibility, 4 meta, 5 categories, 6 tags, 7 slug, 8 title;
-        markdown from line 9 ( no blank lines between ). */
-        if ( count( $lines ) < 9 ) {
-            $errors[] = __( 'File must have at least 9 header lines (comment, release, visibility, meta, categories, tags, slug, title) plus markdown body.', 'markdown-importer' );
+        /* Compact header: line 1 comment, 2 release, 3 visibility, 4 meta, 5 categories, 6 tags, 7 slug, 8 title, 9 settings;
+        markdown from line 10 ( no blank lines between ). */
+        if ( count( $lines ) < 10 ) {
+            $errors[] = __( 'File must have at least 10 header lines (comment, release, visibility, meta, categories, tags, settings, slug, title) plus markdown body.', 'markdown-importer' );
         }
 
         $release_raw = '';
@@ -48,6 +48,8 @@ class MI_Parser {
         $tags_raw = '';
         $tags_normalized = [];
         $tags_error = '';
+        $settings_normalized = [];
+        $settings_error = '';
         $comment = trim( isset( $lines[ 0 ] ) ? ( string ) $lines[ 0 ] : '' );
         $release_line = trim( isset( $lines[ 1 ] ) ? ( string ) $lines[ 1 ] : '' );
         $release = self::parse_release_line( $release_line );
@@ -89,27 +91,35 @@ class MI_Parser {
         } else {
             $tags_normalized = $tags[ 'normalized' ];
         }
-        $slug_line = trim( isset( $lines[ 6 ] ) ? ( string ) $lines[ 6 ] : '' );
-        $title = trim( isset( $lines[ 7 ] ) ? ( string ) $lines[ 7 ] : '' );
-        $markdown = implode( "\n", array_slice( $lines, 8 ) );
+        $settings_line = trim(isset( $lines [ 6 ] ) ? (string) $lines[ 6 ] : '' );
+        $settings = self::parse_settings_line($settings_line);
+        if(! $settings[ 'valid' ]) { 
+            $settings_error = __('Invalid syntax or incorrect key | value', 'markdown-importer');
+            $errors[] = __( 'Line 7 (settings) must be [[ALLOW_COMMENTS::ON|OFF]] or [[]].', 'markdown-importer' ) . ' ' . $settings_error;
+        } else {
+            $settings_normalized = array('mi-allow-comments' => $settings[ 'normalized' ] );
+        }
+        $slug_line = trim( isset( $lines[ 7 ] ) ? ( string ) $lines[ 7 ] : '' );
+        $title = trim( isset( $lines[ 8 ] ) ? ( string ) $lines[ 8 ] : '' );
+        $markdown = implode( "\n", array_slice( $lines, 9 ) );
 
         if ( $slug_line === '' ) {
             $slug_error = __( 'Empty URL slug is not allowed.', 'markdown-importer' );
-            $errors[] = __( 'Line 7 (URL slug) cannot be empty.', 'markdown-importer' );
+            $errors[] = __( 'Line 8 (URL slug) cannot be empty.', 'markdown-importer' );
         }
         if ( $title === '' ) {
-            $errors[] = __( 'Line 8 (title) cannot be empty.', 'markdown-importer' );
+            $errors[] = __( 'Line 9 (title) cannot be empty.', 'markdown-importer' );
         }
 
         $sanitized_slug = sanitize_title( $slug_line );
         if ( $slug_line !== '' && $sanitized_slug === '' ) {
             $slug_error = __( 'Invalid slug after sanitization.', 'markdown-importer' );
-            $errors[] = __( 'Line 7 (URL slug) is invalid.', 'markdown-importer' ) . ' ' . $slug_error;
+            $errors[] = __( 'Line 8 (URL slug) is invalid.', 'markdown-importer' ) . ' ' . $slug_error;
         }
 
         if ( $slug_line !== '' && ! preg_match( '/^[A-Za-z0-9-]+$/', $slug_line ) ) {
             $slug_error = __( 'Invalid syntax.', 'markdown-importer' );
-            $errors[] = __( 'Line 7 (URL slug) contains disallowed characters. Only a-z, 0-9, and hyphen (-) are allowed.', 'markdown-importer' ) . ' ' . $slug_error;
+            $errors[] = __( 'Line 8 (URL slug) contains disallowed characters. Only a-z, 0-9, and hyphen (-) are allowed.', 'markdown-importer' ) . ' ' . $slug_error;
         }
 
         return [
@@ -129,6 +139,8 @@ class MI_Parser {
             'tags_raw' => $tags_raw,
             'tags_error' => $tags_error,
             'tags' => $tags_normalized,
+            'settings_error' => $settings_error,
+            'settings' => $settings_normalized,
             'slug_error' => $slug_error,
             'slug_raw' => $slug_line,
             'slug' => $sanitized_slug,
@@ -140,18 +152,19 @@ class MI_Parser {
     /**
     * Build canonical upload markdown ( lines 1–5 header + body ) from editor fields.
     */
-    public static function compose_document( $comment, $release_form, $visibility, $password, $meta_description, $categories, $tags, $slug_line, $title, $markdown_body ) {
+    public static function compose_document( $comment, $release_form, $visibility, $password, $meta_description, $categories, $tags, $settings_line, $slug_line, $title, $markdown_body ) {
         $line1 = trim( ( string ) $comment );
         $line2 = self::release_token_from_form( $release_form );
         $line3 = self::visibility_token_from_status( $visibility, $password );
         $line4 = ( string ) $meta_description;
         $line5 = '[[' . implode( '::', array_map( function ( $c ) { return trim( ( string ) $c ); }, $categories ) ) . ']]';
         $line6 = '[[' . implode( '::', array_map( function ( $t ) { return trim( ( string ) $t ); }, $tags ) ) . ']]';
-        $line7 = trim( ( string ) $slug_line );
-        $line8 = trim( ( string ) $title );
+        $line7 = '[[ALLOW_COMMENTS::' . ( $settings_line['mi-allow-comments'] == 'true' ? 'ON' : 'OFF' ) . ']]';
+        $line8 = trim( ( string ) $slug_line );
+        $line9 = trim( ( string ) $title );
         $body = ltrim( ( string ) $markdown_body, "\n" );
 
-        return $line1 . "\n" . $line2 . "\n" . $line3 . "\n" . $line4 . "\n" . $line5 . "\n" . $line6 . "\n" . $line7 . "\n" . $line8  . "\n" . $body;
+        return $line1 . "\n" . $line2 . "\n" . $line3 . "\n" . $line4 . "\n" . $line5 . "\n" . $line6 . "\n" . $line7 . "\n" . $line8 . "\n" . $line9 . "\n" . $body;
     }
 
     /**
@@ -352,5 +365,28 @@ class MI_Parser {
             }
         }
         return [ 'valid' => true, 'raw' => $original, 'normalized' => $normalized ];
+    }
+
+    private static function parse_settings_line($line) {
+        $original = trim( ( string ) $line );
+        if ( $original === '' ) {
+            return [ 'valid' => true, 'raw' => $original, 'normalized' => false ];
+        }
+        if ( ! preg_match( '/^\[\[(.*)\]\]$/u', $original, $m ) ) {
+            return [ 'valid' => false, 'raw' => $original, 'normalized' => false ];
+        }
+        $inner = trim( $m[ 1 ] );
+        if ( $inner === '' ) {
+            return [ 'valid' => true, 'raw' => $original, 'normalized' => false ];
+        }
+        $settings = explode( '::', $inner );
+        // Avoid very long category names that could cause issues.
+        $key = $settings[0];
+        $value = $settings[1];
+        if($key && $key == 'ALLOW_COMMENTS' && $value && ($value == 'OFF' || $value == 'ON')){
+            return [ 'valid' => true, 'raw' => $original, 'normalized' => $value == 'ON' ];
+        }
+        else 
+            return [ 'valid' => true, 'raw' => $original, 'normalized' => $normalized ];
     }
 }

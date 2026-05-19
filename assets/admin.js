@@ -28,7 +28,7 @@
     }
 
     function buildValidationCsv(rows) {
-        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","categories","categories_status","tags","tags_status","url_slug","url_slug_status","errors"'];
+        var out = ['"filename","keyword","keyword_status","release_date","release_status","visibility","visibility_status","categories","categories_status","tags","tags_status","settings_status","url_slug","url_slug_status","errors"'];
         (rows || []).forEach(function (row) {
             out.push(
                 [
@@ -43,6 +43,7 @@
                     csvEscape(row.categories_status || ''),
                     csvEscape(row.tags || ''),
                     csvEscape(row.tags_status || ''),
+                    csvEscape(row.settings_status || ''),
                     csvEscape(row.slug || ''),
                     csvEscape(row.slug_status || ''),
                     csvEscape((row.errors || []).join(' | ')),
@@ -302,7 +303,7 @@
 
             $('#mi-q-post-settings :input').each(function() {
                 let name = $(this).attr('name');
-                if(it['post_settings']) {
+                if(it['post_settings'] && it['post_settings'][name]) {
                     $(this).prop('checked', it['post_settings'][name] == 'true');
                 }else {
                     $(this).prop('checked', false);

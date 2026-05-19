@@ -37,6 +37,7 @@ This Article is about Bitcoin
 This article will explain to you how to invest in Bitcoin
 [[Bitcoin::Coin]]
 [[tag1::tag2::tag3]]
+[[ALLOW_COMMENTS::OFF]]
 invest-in-bitcoin-today
 How to Invest in Bitcoin
 # How to Invest in Bitcoin

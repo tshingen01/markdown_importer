@@ -152,6 +152,7 @@ class MI_Ajax {
                     'categories_status' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
                     'tags' => isset( $validation['tags_raw'] ) ? ( string ) $validation['tags_raw'] : '',
                     'tags_status' => isset( $validation['tags_error'] ) ? ( string ) $validation['tags_error'] : '',
+                    'settings_status' => isset( $validation['settings_error'] ) ? ( string ) $validation['settings_error'] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -197,6 +198,8 @@ class MI_Ajax {
                     'categories_status' => isset( $validation['categories_error'] ) ? ( string ) $validation['categories_error'] : '',
                     'tags' => isset( $validation['tags_raw'] ) ? ( string ) $validation['tags_raw'] : '',
                     'tags_status' => isset( $validation['tags_error'] ) ? ( string ) $validation['tags_error'] : '',
+                    'settings' => isset( $validation['settings_raw'] ) ? ( string ) $validation['settings_raw'] : '',
+                    'settings_status' => isset( $validation['settings_error'] ) ? ( string ) $validation['settings_error'] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : $slug,
                     'slug_status' => $slug_status,
                     'errors' => $errors,
@@ -222,6 +225,7 @@ class MI_Ajax {
                 'meta_description' => $validation[ 'meta_description' ],
                 'categories' => $categories,
                 'tags' => $tags,
+                'post_settings' => $validation[ 'settings' ],
                 'slug' => $slug,
                 'title' => $validation[ 'title' ],
                 'markdown' => $validation[ 'markdown' ],
@@ -314,10 +318,10 @@ class MI_Ajax {
                             'meta_description' => isset( $item[ 'meta_description' ] ) ? ( string ) $item[ 'meta_description' ] : '',
                             'categories' => isset( $item[ 'categories' ] ) && is_array( $item[ 'categories' ] ) ? array_values( array_map( 'strval', $item[ 'categories' ] ) ) : [],
                             'tags' => isset( $item[ 'tags' ] ) && is_array( $item[ 'tags' ] ) ? array_values( array_map( 'strval', $item[ 'tags' ] ) ) : [],
+                            'post_settings' => isset( $item[ 'post_settings'] ) ? ( array ) $item['post_settings'] : [],
                             'slug' => isset( $item[ 'slug' ] ) ? ( string ) $item[ 'slug' ] : '',
                             'title' => isset( $item[ 'title' ] ) ? ( string ) $item[ 'title' ] : '',
                             'markdown' => isset( $item[ 'markdown' ] ) ? ( string ) $item[ 'markdown' ] : '',
-                            'post_settings' => isset( $item[ 'post_settings'] ) ? ( array ) $item['post_settings'] : [],
                             'error' => isset( $item[ 'error' ] ) ? ( string ) $item[ 'error' ] : '',
                         ],
                         'categories_all' => $categories,
@@ -372,7 +376,7 @@ class MI_Ajax {
             wp_send_json_error( [ 'message' => __( 'Queue item not found.', 'markdown-importer' ) ] );
         }
 
-        $composed = MI_Parser::compose_document($cmt, $release, $vis, $pwd, $meta, $ctg, $tags, $slug_in, $title, $md );
+        $composed = MI_Parser::compose_document($cmt, $release, $vis, $pwd, $meta, $ctg, $tags, $post_settings, $slug_in, $title, $md );
         $validation = MI_Parser::validate_document( $composed );
         if ( ! $validation[ 'ok' ] ) {
             $msg = isset( $validation[ 'errors' ][ 0 ] ) ? ( string ) $validation[ 'errors' ][ 0 ] : __( 'Invalid markdown structure.', 'markdown-importer' );
@@ -866,6 +870,7 @@ class MI_Ajax {
                     'categories_status' => isset( $validation[ 'categories_error' ] ) ? ( string ) $validation[ 'categories_error' ] : '',
                     'tags' => isset( $validation[ 'tags_raw' ] ) ? ( string ) $validation[ 'tags_raw' ] : '',
                     'tags_status' => isset( $validation[ 'tags_error' ] ) ? ( string ) $validation[ 'tags_error' ] : '',
+                    'settings_status' => isset( $validation[ 'settings_error' ] ) ? ( string ) $validation[ 'settings_error' ] : '',
                     'slug' => isset( $validation[ 'slug_raw' ] ) && ( string ) $validation[ 'slug_raw' ] !== '' ? ( string ) $validation[ 'slug_raw' ] : ( isset( $validation[ 'slug' ] ) ? ( string ) $validation[ 'slug' ] : '' ),
                     'slug_status' => isset( $validation[ 'slug_error' ] ) ? ( string ) $validation[ 'slug_error' ] : '',
                     'errors' => isset( $validation[ 'errors' ] ) && is_array( $validation[ 'errors' ] ) ? array_values( array_map( 'strval', $validation[ 'errors' ] ) ) : [ __( 'Invalid markdown file.', 'markdown-importer' ) ],
@@ -901,6 +906,7 @@ class MI_Ajax {
                 'meta_description' => $validation[ 'meta_description' ],
                 'categories' => array_values( array_map( 'strval', $validation[ 'categories' ] ) ),
                 'tags' => array_values( array_map( 'strval', $validation[ 'tags' ] ) ),
+                'post_settings' => isset( $validation[ 'settings' ] ) ? ( array ) $validation[ 'settings' ] : [],
                 'slug' => $validation[ 'slug' ],
                 'title' => $validation[ 'title' ],
                 'markdown' => $validation[ 'markdown' ],
