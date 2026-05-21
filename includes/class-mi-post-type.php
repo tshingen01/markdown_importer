@@ -38,6 +38,36 @@ class MI_Post_Type
             ]
         );
 
+        register_taxonomy_for_object_type(
+            'post_tag',
+            self::POST_TYPE
+        );
+
+        register_taxonomy_for_object_type(
+            'category',
+            self::POST_TYPE
+        );
+
+        $post_tags = get_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+        ]);
+
+        wp_update_term_count_now(
+            wp_list_pluck($post_tags, 'term_taxonomy_id'),
+            'post_tag',
+        );
+
+        $categories = get_terms([
+            'taxonomy'   => 'category',
+            'hide_empty' => false,
+        ]);
+
+        wp_update_term_count_now(
+            wp_list_pluck($categories, 'term_taxonomy_id'),
+            'category',
+        );
+
         self::register_hooks();
     }
 
@@ -51,7 +81,39 @@ class MI_Post_Type
         add_filter('post_type_link', [self::class, 'filter_post_type_link'], 10, 2);
         add_action('template_redirect', [self::class, 'redirect_legacy_mi_article_url'], -1);
         add_action('template_redirect', [self::class, 'resolve_article_from_root_permalink'], 0);
-        add_filter('posts_where', [self::class, 'merge_mi_article_in_posts_admin_sql'], 99, 2);
+        add_action('pre_get_posts', function ($query) {
+            if (
+                is_admin()
+                && $query->is_main_query()
+            ) {
+                global $pagenow;
+                if (
+                    $pagenow === 'edit.php'
+                    && $query->get('post_type') === 'post'
+                    ) {
+                        $query->set(
+                            'post_type',
+                            ['post', MI_Post_Type::POST_TYPE]
+                        );
+                    }
+                }
+            if (
+                is_home()
+                || is_search()
+                || is_category()
+                || is_tag()
+                || is_author()
+            ) {
+
+                $query->set(
+                    'post_type',
+                    [
+                        'post',
+                        MI_Post_Type::POST_TYPE
+                    ]
+                );
+            }
+        }, 99, 2);
     }
 
     /**
@@ -158,52 +220,5 @@ class MI_Post_Type
         setup_postdata($post);
 
         status_header(200);
-    }
-
-    /**
-     * Include mi_article rows on the main Posts screen without setting post_type to an array
-     * (array breaks WP_Screen / edit.php which expects a string post type).
-     */
-    public static function merge_mi_article_in_posts_admin_sql($where, $query)
-    {
-        if (! is_admin() || ! $query->is_main_query()) {
-            return $where;
-        }
-
-        global $pagenow;
-        if ($pagenow !== 'edit.php') {
-            return $where;
-        }
-
-        $pt = isset($_REQUEST['post_type']) ? sanitize_key(wp_unslash($_REQUEST['post_type'])) : '';
-        if ($pt !== '' && $pt !== 'post') {
-            return $where;
-        }
-
-        if ($query->get('post_type') !== 'post') {
-            return $where;
-        }
-
-        global $wpdb;
-        $t = $wpdb->posts;
-        $mi = esc_sql(self::POST_TYPE);
-
-        if (strpos($where, "{$t}.post_type = '{$mi}'") !== false || strpos($where, "{$t}.post_type = \"{$mi}\"") !== false) {
-            return $where;
-        }
-
-        $pair = "({$t}.post_type = 'post' OR {$t}.post_type = '{$mi}')";
-
-        $search = "{$t}.post_type = 'post'";
-        if (strpos($where, $search) !== false) {
-            return str_replace($search, $pair, $where);
-        }
-
-        $search_in = "{$t}.post_type IN ('post')";
-        if (strpos($where, $search_in) !== false) {
-            return str_replace($search_in, "{$t}.post_type IN ('post','{$mi}')", $where);
-        }
-
-        return $where;
     }
 }

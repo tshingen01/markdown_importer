@@ -892,6 +892,11 @@ class MI_Ajax {
             }
 
             $rel = isset( $validation[ 'release_normalized' ] ) ? ( string ) $validation[ 'release_normalized' ] : 'now';
+            if($rel !== 'now') {
+                if(strtotime($rel) < time()) {
+                    $rel = 'now';
+                }
+            }
             $valid_items[] = [
                 'id' => MI_Staging::make_item_id(),
                 'batch' => $batch,

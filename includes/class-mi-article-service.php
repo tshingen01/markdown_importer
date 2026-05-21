@@ -470,8 +470,9 @@ class MI_Article_Service {
             delete_post_meta( $post_id, self::META_RELEASE );
             delete_post_meta( $post_id, self::META_PENDING_UPGRADE );
             delete_post_meta( $post_id, '_mi_meta_description' );
-            wp_delete_post( $post_id, true );
+            wp_set_post_terms( $post_id, []);
             unstick_post( $post_id );
+            wp_delete_post( $post_id, true );
         }
 
         public static function get_article_payload( $post_id ) {
@@ -479,7 +480,7 @@ class MI_Article_Service {
             if ( ! $post || $post->post_type !== MI_Post_Type::POST_TYPE ) {
                 return null;
             }
-            $is_sticky = 
+            $is_sticky = is_sticky( $post_id );
             $post_settings = array(
                 'mi-make-this-post-sticky' => is_sticky( $post_id ),
                 'mi-allow-comments' => $post->comment_status == 'open',
