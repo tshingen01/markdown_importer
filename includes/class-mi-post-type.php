@@ -84,19 +84,10 @@ class MI_Post_Type
         add_action('pre_get_posts', function ($query) {
             if (
                 is_admin()
-                && $query->is_main_query()
+                || ! $query->is_main_query()
             ) {
-                global $pagenow;
-                if (
-                    $pagenow === 'edit.php'
-                    && $query->get('post_type') === 'post'
-                    ) {
-                        $query->set(
-                            'post_type',
-                            ['post', MI_Post_Type::POST_TYPE]
-                        );
-                    }
-                }
+                return;
+            }
             if (
                 is_home()
                 || is_search()
@@ -104,7 +95,6 @@ class MI_Post_Type
                 || is_tag()
                 || is_author()
             ) {
-
                 $query->set(
                     'post_type',
                     [
@@ -113,7 +103,7 @@ class MI_Post_Type
                     ]
                 );
             }
-        }, 99, 2);
+        }, 99);
     }
 
     /**
