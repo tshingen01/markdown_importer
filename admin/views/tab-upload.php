@@ -42,7 +42,7 @@ invest-in-bitcoin-today
 How to Invest in Bitcoin
 # How to Invest in Bitcoin
 Intro text...
-[[image::ALT-ATTRIBUTE::xxx.png]]
+[[image::ALT-ATTRIBUTE::XXX.png::XXX::256X128::right::https://www.web-bee.org/::_blank]]
 [[Bitcoin::Bitcoin::self]]
 [[https://google.com::Google::blank]]
 [[CTA::START]]

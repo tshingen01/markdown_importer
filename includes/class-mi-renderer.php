@@ -112,21 +112,63 @@ class MI_Renderer
      */
     private static function replace_image_tags($text)
     {
-        $cb = function ($file, $alt) {
+        $cb = function ($alt, $file, $caption = '', $size = '', $align = '', $url = '', $target = '') {
+            $error = array();
             $file = trim($file);
             $alt = trim($alt);
-            if ($file === '') {
-                return '';
+            $caption = trim($caption);
+            $size = explode('x', trim($size));
+            $width = 'auto';
+            $height = 'auto';
+            if(strtolower($size[0]) === 'auto') $width = '100%';
+            if ($size[0] !== '' && strtolower($size[0]) !== 'full' && strtolower($size[0]) !== 'auto'){
+                if (count($size) === 1) $size = explode('X', trim($size[0]));
+                if (count($size) === 1) $error[] = 'Size must be in format WIDTHxHEIGHT';
+                else {
+                    $width = trim($size[0]);
+                    $height = trim($size[1]);
+                    if (! ctype_digit($width) || ! ctype_digit($height)) {
+                        $error[] = 'Width and height must be integers';
+                    }else {
+                        $width .= 'px';
+                        $height .= 'px';
+                    }
+                }
             }
-            $url = '';
+            
+            $align = strtolower(trim($align));
+            if (! in_array($align, ['', 'left', 'center', 'right'], true)) {
+                $error[] = 'Align must be one of: left, center, right';
+            }
+            
+            $url = trim($url);
+            $target = trim($target);
+            
+            if(! in_array($target, ['','self', 'blank', 'parent', 'top', '_self', '_blank', '_parent', '_top'], true)) {
+                $error[] = 'Target must be one of: _self, _blank, _parent, _top';
+            }
+            if(in_array($target, ['blank', 'parent', 'top'], true)) {
+                $target = '_' . $target;
+            }    
+            if ($file === '') {
+                $error[] = 'File is required';
+            }
+            if(! empty($error)) {
+                return '<div>'. implode('; ', $error) . '</div>';
+            }
+            $src = '';
             $att = self::find_attachment_by_basename($file);
             if ($att) {
-                $url = wp_get_attachment_url($att);
+                $src = wp_get_attachment_url($att);
             }
-            if (! $url) {
+            
+            if (! $src) {
                 return null;
             }
-            return '<img src="' . esc_url($url) . '" alt="' . esc_attr($alt) . '" class="mi-inline-image" loading="lazy" />';
+            $a_tag_start = '<a href="' . esc_url($url) . '" target="' . esc_attr($target ?: '_self') . '">';
+            $a_tag_end = '</a>';
+            
+            return '<figure class="wp-block-image size-full" style="text-align: ' . esc_attr($align) . ';">' . ($url ? $a_tag_start : '') . '<img src="' . esc_url($src) . '" alt="' . esc_attr($alt) . '" class="mi-inline-image" width="'. $width .'" height="'. $height .'" loading="lazy" />' .($url ? $a_tag_end : '') . '<figcaption>'. esc_html($caption) . '</figcaption></figure>';
         };
         return preg_replace_callback(
             '/\[\[(?i)image::([^\]]+)\]\]/u',
@@ -138,13 +180,18 @@ class MI_Renderer
                 if (strpos($inner, '::') === false) {
                     return $cb($inner, '');
                 }
-                $parts = explode('::', $inner, 2);
+                $parts = explode('::', $inner);
                 $alt = isset($parts[0]) ? trim($parts[0]) : '';
                 $file = isset($parts[1]) ? trim($parts[1]) : '';
+                $caption = isset($parts[2]) ? trim($parts[2]) : '';
+                $size = isset($parts[3]) ? trim($parts[3]) : '';
+                $align = isset($parts[4]) ? trim($parts[4]) : '';
+                $url = isset($parts[5]) ? trim($parts[5]) : '';
+                $target = isset($parts[6]) ? trim($parts[6]) : '';
                 if ($file === '') {
                     return $m[0];
                 }
-                return $cb($file, $alt);
+                return $cb($alt, $file, $caption, $size, $align, $url, $target);
             },
             $text
         );
