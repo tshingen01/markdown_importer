@@ -134,9 +134,6 @@ class MI_Renderer
             }
             
             $align = strtolower(trim($align));
-            if (! in_array($align, ['', 'left', 'center', 'right'], true)) {
-                $error[] = 'Align must be one of: left, center, right';
-            }
             
             $url = trim($url);
             $target = trim($target);
@@ -184,15 +181,23 @@ class MI_Renderer
                 $n=3;
                 $size = isset($parts[$n]) ? trim($parts[$n]) : '';
                 $size = explode('x', trim($size));
-                if ($size[0] !== '' && strtolower($size[0]) !== 'full' && strtolower($size[0]) !== 'auto'){
+                if (strtolower($size[0]) === 'full' && strtolower($size[0]) === 'auto'){
+                    $n+1;
+                }else{
                     if (count($size) === 1) $size = explode('X', trim($size[0]));
                     if (count($size) > 1) {
                         $n += 1;
                         $size = trim($size[0]) . 'x' . trim($size[1]);
                     }
+                    else {
+                        $size = '';
+                    }
                 }
                 
-                $align = isset($parts[$n]) ? trim($parts[$n]) : '';
+                $align = count($parts) > $n ? trim($parts[$n]) : '';
+                if (in_array($align, ['left', 'center', 'right'], true)) {
+                    $n += 1;
+                } else $align = '';
                 $url = isset($parts[5]) ? trim($parts[5]) : ''; 
                 $target = isset($parts[6]) ? trim($parts[6]) : '';
                 if ($file === '') {
