@@ -113,7 +113,7 @@ class MI_Renderer
     private static function replace_image_tags($text)
     {
         $cb = function ($alt, $file, $caption = '', $size = '', $align = '', $url = '', $target = '') {
-            $error = array();
+            $error = '';
             $file = trim($file);
             $alt = trim($alt);
             $caption = trim($caption);
@@ -126,7 +126,7 @@ class MI_Renderer
                 $width = trim($size[0]);
                 $height = trim($size[1]);
                 if (! ctype_digit($width) || ! ctype_digit($height)) {
-                    $error[] = 'Width and height must be integers';
+                    $error = 'Syntax Error';
                 }else {
                     $width .= 'px';
                     $height .= 'px';
@@ -139,23 +139,22 @@ class MI_Renderer
             $target = trim($target);
             
             if(! in_array($target, ['','self', 'blank', 'parent', 'top', 'unfencedTop', 'results'], true)) {
-                $error[] = 'Target must be one of: self, blank, parent, top, unfencedTop, results';
+                $error = 'Syntax Error';
             }
             if(in_array($target, ['blank', 'parent', 'top', 'unfencedTop', 'results'], true)) {
                 $target = '_' . $target;
             }    
             if ($file === '') {
-                $error[] = 'File is required';
+                $error = 'Syntax Error';
             }
-            if(! empty($error)) {
-                return '<div>'. implode('; ', $error) . '</div>';
+            if($error) {
+                return '<div>'.  $error . '</div>';
             }
             $src = '';
             $att = self::find_attachment_by_basename($file);
             if ($att) {
                 $src = wp_get_attachment_url($att);
             }
-            
             if (! $src) {
                 return null;
             }
@@ -177,17 +176,27 @@ class MI_Renderer
                 $parts = explode('::', $inner);
                 $alt = isset($parts[0]) ? trim($parts[0]) : '';
                 $file = isset($parts[1]) ? trim($parts[1]) : '';
+                if ($file === '') {
+                    return $m[0];
+                }
                 $caption = isset($parts[2]) ? trim($parts[2]) : '';
                 $n=3;
-                $size = isset($parts[$n]) ? trim($parts[$n]) : '';
+                $size = count($parts) > $n ? trim($parts[$n]) : '';
                 $size = explode('x', trim($size));
-                if (strtolower($size[0]) === 'full' && strtolower($size[0]) === 'auto'){
-                    $n+1;
+                if (strtolower($size[0]) === 'full' || strtolower($size[0]) === 'auto'){
+                    $n += 1;
+                    $size = $size[0];
                 }else{
                     if (count($size) === 1) $size = explode('X', trim($size[0]));
                     if (count($size) > 1) {
-                        $n += 1;
-                        $size = trim($size[0]) . 'x' . trim($size[1]);
+                        $width = trim($size[0]);
+                        $height = trim($size[1]);
+                        if (! ctype_digit($width) || ! ctype_digit($height)) {
+                            $size = '';
+                        }else {
+                            $n += 1;
+                            $size = trim($size[0]) . 'x' . trim($size[1]);
+                        }
                     }
                     else {
                         $size = '';
@@ -198,10 +207,10 @@ class MI_Renderer
                 if (in_array($align, ['left', 'center', 'right'], true)) {
                     $n += 1;
                 } else $align = '';
-                $url = isset($parts[5]) ? trim($parts[5]) : ''; 
-                $target = isset($parts[6]) ? trim($parts[6]) : '';
-                if ($file === '') {
-                    return $m[0];
+                $url = count($parts) > $n ? trim($parts[$n]) : '';
+                $target = count($parts) > $n + 1 ? trim($parts[$n + 1]) : 'self';
+                if(in_array($url, ['self', 'blank', 'parent', 'top', 'unfencedTop', 'results'], true)) {
+                    return 'Syntax Error';
                 }
                 return $cb($alt, $file, $caption, $size, $align, $url, $target);
             },
