@@ -117,13 +117,12 @@ class MI_Renderer
             $file = trim($file);
             $alt = trim($alt);
             $caption = trim($caption);
-            $size = explode('x', trim($size));
+            $size = trim($size);
             $width = 'auto';
             $height = 'auto';
-            if(strtolower($size[0]) === 'auto') $width = '100%';
-            if ($size[0] !== '' && strtolower($size[0]) !== 'full' && strtolower($size[0]) !== 'auto'){
-                if (count($size) === 1) $size = explode('X', trim($size[0]));
-                if (count($size) === 1) $error[] = 'Size must be in format WIDTHxHEIGHT';
+            if(strtolower($size) === 'auto') $width = '100%';
+            if ($size !== '' && strtolower($size) !== 'full' && strtolower($size) !== 'auto'){
+                $size = explode('x', trim($size));
                 else {
                     $width = trim($size[0]);
                     $height = trim($size[1]);
@@ -144,10 +143,10 @@ class MI_Renderer
             $url = trim($url);
             $target = trim($target);
             
-            if(! in_array($target, ['','self', 'blank', 'parent', 'top', '_self', '_blank', '_parent', '_top'], true)) {
-                $error[] = 'Target must be one of: _self, _blank, _parent, _top';
+            if(! in_array($target, ['','self', 'blank', 'parent', 'top', 'unfencedTop', 'results'], true)) {
+                $error[] = 'Target must be one of: self, blank, parent, top, unfencedTop, results';
             }
-            if(in_array($target, ['blank', 'parent', 'top'], true)) {
+            if(in_array($target, ['blank', 'parent', 'top', 'unfencedTop', 'results'], true)) {
                 $target = '_' . $target;
             }    
             if ($file === '') {
@@ -184,9 +183,19 @@ class MI_Renderer
                 $alt = isset($parts[0]) ? trim($parts[0]) : '';
                 $file = isset($parts[1]) ? trim($parts[1]) : '';
                 $caption = isset($parts[2]) ? trim($parts[2]) : '';
-                $size = isset($parts[3]) ? trim($parts[3]) : '';
-                $align = isset($parts[4]) ? trim($parts[4]) : '';
-                $url = isset($parts[5]) ? trim($parts[5]) : '';
+                $n=3;
+                $size = isset($parts[$n]) ? trim($parts[$n]) : '';
+                $size = explode('x', trim($size));
+                if ($size[0] !== '' && strtolower($size[0]) !== 'full' && strtolower($size[0]) !== 'auto'){
+                    if (count($size) === 1) $size = explode('X', trim($size[0]));
+                    if (count($size) > 1) {
+                        $n += 1;
+                        $size = trim($size[0]) . 'x' . trim($size[1]);
+                    }
+                }
+                
+                $align = isset($parts[$n]) ? trim($parts[$n]) : '';
+                $url = isset($parts[5]) ? trim($parts[5]) : ''; 
                 $target = isset($parts[6]) ? trim($parts[6]) : '';
                 if ($file === '') {
                     return $m[0];
