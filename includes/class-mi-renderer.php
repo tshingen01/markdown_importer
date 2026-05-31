@@ -123,15 +123,13 @@ class MI_Renderer
             if(strtolower($size) === 'auto') $width = '100%';
             if ($size !== '' && strtolower($size) !== 'full' && strtolower($size) !== 'auto'){
                 $size = explode('x', trim($size));
-                else {
-                    $width = trim($size[0]);
-                    $height = trim($size[1]);
-                    if (! ctype_digit($width) || ! ctype_digit($height)) {
-                        $error[] = 'Width and height must be integers';
-                    }else {
-                        $width .= 'px';
-                        $height .= 'px';
-                    }
+                $width = trim($size[0]);
+                $height = trim($size[1]);
+                if (! ctype_digit($width) || ! ctype_digit($height)) {
+                    $error[] = 'Width and height must be integers';
+                }else {
+                    $width .= 'px';
+                    $height .= 'px';
                 }
             }
             
