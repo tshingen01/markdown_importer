@@ -65,6 +65,80 @@ class MI_Plugin
                 );
             }
         }, 10);
+        /**
+         * Force Rank Math to use the correct post title
+         */
+        add_filter('rank_math/frontend/title', function($title) {
+            if (is_singular(MI_Post_Type::POST_TYPE)) {
+                $post = get_queried_object();
+                if ($post && $post->post_title) {
+                    // Manually construct the title
+                    $separator = apply_filters('rank_math/frontend/title_separator', ' - ');
+                    $site_name = get_bloginfo('name');
+                    $new_title = $post->post_title . $separator . $site_name;
+                    
+                    // Log for debugging
+                    error_log('MI_Renderer: Forcing title to: ' . $new_title);
+                    
+                    return $new_title;
+                }
+            }
+            return $title;
+        }, 999);
+
+        /**
+         * Also fix the WordPress document title
+         */
+        add_filter('document_title_parts', function($parts) {
+            if (is_singular(MI_Post_Type::POST_TYPE)) {
+                $post = get_queried_object();
+                if ($post && $post->post_title) {
+                    $parts['title'] = $post->post_title;
+                    // Make sure site name is properly set
+                    if (!isset($parts['site']) || empty($parts['site'])) {
+                        $parts['site'] = get_bloginfo('name');
+                    }
+                }
+            }
+            return $parts;
+        }, 999);
+
+        /**
+         * Ensure Rank Math can access the post data
+         */
+        add_filter('rank_math/frontend/setup_post_data', function($post) {
+            if (is_singular(MI_Post_Type::POST_TYPE)) {
+                global $post_obj;
+                if (!$post && isset($post_obj)) {
+                    $post = $post_obj;
+                }
+                if (!$post) {
+                    $post = get_queried_object();
+                }
+                if ($post) {
+                    error_log('MI_Renderer: Rank Math setup_post_data - Post ID: ' . $post->ID . ', Title: ' . $post->post_title);
+                }
+            }
+            return $post;
+        }, 999);
+
+        /**
+         * Alternative: Override the variables Rank Math uses
+         */
+        add_filter('rank_math/frontend/replacements', function($vars) {
+            if (is_singular(MI_Post_Type::POST_TYPE)) {
+                $post = get_queried_object();
+                if ($post && $post->post_title) {
+                    $vars['%title%'] = $post->post_title;
+                    $vars['%title|lowercase%'] = strtolower($post->post_title);
+                    $vars['%title|ucwords%'] = ucwords($post->post_title);
+                    
+                    // Log the replacements
+                    error_log('MI_Renderer: Rank Math replacements set for title: ' . $post->post_title);
+                }
+            }
+            return $vars;
+        }, 999);
         if (is_admin()) {
             MI_Admin::instance();
             MI_Ajax::register();
