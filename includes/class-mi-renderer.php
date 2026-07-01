@@ -241,7 +241,7 @@ class MI_Renderer
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
-                return wp_kses(self::sanitize_output_html(''), self::allowed_html());
+                return wp_kses(self::sanitize_output_html($cta['code']), self::allowed_html());
             },
             $text
         );
