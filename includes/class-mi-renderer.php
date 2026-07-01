@@ -158,7 +158,7 @@ class MI_Renderer
             if (! $src) {
                 return null;
             }
-            $a_tag_start = '<a href="' . esc_url($url) . '" target="' . esc_attr($target ?: '_self') . '">';
+            $a_tag_start = '<a href="' . esc_url($url) . '" target="_' . esc_attr($target ?: 'self') . '">';
             $a_tag_end = '</a>';
             
             return '<figure class="wp-block-image size-full" style="text-align: ' . esc_attr($align) . ';">' . ($url ? $a_tag_start : '') . '<img src="' . esc_url($src) . '" alt="' . esc_attr($alt) . '" class="mi-inline-image" width="'. $width .'" height="'. $height .'" loading="lazy" />' .($url ? $a_tag_end : '') . '<figcaption>'. esc_html($caption) . '</figcaption></figure>';
