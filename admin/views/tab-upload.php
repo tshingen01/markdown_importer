@@ -8,7 +8,7 @@ if (! defined('ABSPATH')) {
 
     <div class="mi-section-header">
         <?php esc_html_e('Upload new Articles', 'markdown-importer'); ?>
-        <div class="mi-actions-row">
+        <div class="mi-actions-row mi-hidden" id="mi-upload-actions">
             <button type="button" class="button button-primary mi-btn-confirm" id="mi-confirm-import">
                 <span class="dashicons dashicons-yes mi-actions-row-icon" aria-hidden="true"></span>
                 <span class="mi-actions-row-label"><?php esc_html_e('Confirm', 'markdown-importer'); ?></span>

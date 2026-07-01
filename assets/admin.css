@@ -354,7 +354,7 @@
     width: 18px;
     height: 18px;
     font-size: 18px;
-    line-height: 18px;
+    line-height: 18px !important;
 }
 
 .mi-queue-action-btn.mi-q-view {

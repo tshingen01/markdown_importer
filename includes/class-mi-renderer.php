@@ -238,10 +238,11 @@ class MI_Renderer
             function ($m) {
                 $name = trim($m[1]);
                 $cta = MI_Cta::get_by_name($name);
+                $code = str_replace("\n", "", $cta['code']);
                 if ($cta === null || $cta === '') {
                     return '<!-- missing CTA:' . esc_html($name) . ' -->';
                 }
-                return wp_kses(self::sanitize_output_html($cta['code']), self::allowed_html());
+                return wp_kses(self::sanitize_output_html($code), self::allowed_html());
             },
             $text
         );
